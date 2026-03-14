@@ -25,9 +25,11 @@ int main(void) {
     run_test(test_missing_host_fails, "test_missing_host_fails",&tests_passed, &tests_failed);
     run_test(test_trailing_comma_is_error, "test_trailing_comma_is_error", &tests_passed, &tests_failed);
 
-    //test that works at my computer
+    // tests that rely on local interfaces
 #ifdef HOME_TEST
     run_test(test_interfaces_output, "test_interfaces_output", &tests_passed, &tests_failed);
+    run_test(test_check_user_input_lo, "test_check_user_input_lo", &tests_passed, &tests_failed);
+    run_test(test_check_user_input_eth0, "test_check_user_input_eth0", &tests_passed, &tests_failed);
 #endif
 
     int total = tests_passed + tests_failed;

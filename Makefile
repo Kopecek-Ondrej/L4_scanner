@@ -2,6 +2,10 @@ CC := gcc
 CFLAGS := -g -pedantic -Werror -Wall -Wextra
 CPPFLAGS := -I.
 TEST_CPPFLAGS := $(CPPFLAGS) -DTEST_BUILD
+# Enable HOME_TEST=1 to include home-only interface test in test_main
+ifeq ($(HOME_TEST),1)
+TEST_CPPFLAGS += -DHOME_TEST
+endif
 TARGET := ipk-L4-scan
 SRCS := ipk-L4-scan.c cli_parser.c cli_eval.c error_code.c interface.c
 HEADERS := cli_parser.h cli_eval.h error_code.h interface.h
@@ -34,7 +38,7 @@ $(TARGET): $(OBJS)
 tests/%.o: tests/%.c $(HEADERS)
 	$(CC) $(CFLAGS) $(TEST_CPPFLAGS) -c $< -o $@
 
-run_test:
+run_test: $(TEST_BIN)
 	./$(TEST_BIN)
 	@rm -f $(OBJS)
 	@rm -f $(TARGET)

@@ -6,8 +6,10 @@
 //exit codes
 #define EXIT_OK       0
 #define ERR_CLI_ARG   2
+#define ERR_NO_INTERFACE_FOUND 3
 
-#define ERR_INTERFACE 52
+
+#define ERR_SYS_INTERFACE 52
 
 
 void print_error(int error_code, const char *fmt, ...);

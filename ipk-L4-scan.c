@@ -24,12 +24,15 @@ int main(int argc, char* argv[]){
 		//getifaddrs
 			err = print_interfaces();
 			if(err != EXIT_OK) return err;
-			
+
 			break;
 		case MODE_SHOW_HELP:
 			print_help();
 			break;
 		case MODE_SCAN:
+			err = check_for_interface(&scanner);
+			if(err != EXIT_OK) return err;
+			
 			break;
 	}
 	

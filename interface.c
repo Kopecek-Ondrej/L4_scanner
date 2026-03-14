@@ -11,8 +11,7 @@ int print_interfaces(){
     struct ifaddrs *prev = NULL;
 
     if (getifaddrs(&ifaddr) == -1) {
-        perror("getifaddrs");
-        return 1;
+        RETURN_ERROR(ERR_SYS_INTERFACE, "Failed to call getifaddrs()");
     }
 
     for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
@@ -29,12 +28,33 @@ int print_interfaces(){
             }
         }
 
-        if (!already_printed) {
-            fprintf(stdout, "%s\n", ifa->ifa_name);
-        }
+        // if (!already_printed) {
+        //     fprintf(stdout, "name: %s\n", ifa->ifa_name, );
+        // }
     }
 
     freeifaddrs(ifaddr);
-    return 0;
-     
+    return EXIT_OK;    
+}
+
+int check_for_interface(Scanner_t *scanner){
+    struct ifaddrs *ifaddr = NULL;
+    struct ifaddrs *ifa = NULL;
+    // struct ifaddrs *prev = NULL;
+
+    if (getifaddrs(&ifaddr) == -1) {
+        RETURN_ERROR(ERR_SYS_INTERFACE, "Failed to call getifaddrs()");
+    }
+
+    for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+        if (ifa->ifa_name == NULL)
+            continue;
+
+        if(strcmp(ifa->ifa_name,scanner->interface) == 0){
+            freeifaddrs(ifaddr);
+            return EXIT_OK;
+        }
+    }
+    freeifaddrs(ifaddr);
+    RETURN_ERROR(ERR_NO_INTERFACE_FOUND, "Entered interface: %s cannot be reached", scanner->interface); 
 }
