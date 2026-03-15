@@ -10,7 +10,7 @@ int test_help_sets_mode(void) {
     char *argv[] = {"prog", "--help"};
     int argc = (int)(sizeof(argv) / sizeof(argv[0]));
 
-    arguments_t args = {0};
+    Arguments_t args = {0};
     Scanner_t scanner = {0};
 
     int rc = parse_arguments(argc, argv, &args);
@@ -27,7 +27,7 @@ int test_missing_host_fails(void) {
     char *argv[] = {"prog", "-t", "22"};
     int argc = (int)(sizeof(argv) / sizeof(argv[0]));
 
-    arguments_t args = {0};
+    Arguments_t args = {0};
     Scanner_t scanner = {0};
 
     int rc = parse_arguments(argc, argv, &args);
@@ -42,7 +42,7 @@ int test_trailing_comma_is_error(void) {
     char *argv[] = {"prog", "-u", "22," , "host"};
     int argc = (int)(sizeof(argv) / sizeof(argv[0]));
 
-    arguments_t args = {0};
+    Arguments_t args = {0};
     Scanner_t scanner = {0};
 
     int rc = parse_arguments(argc, argv, &args);

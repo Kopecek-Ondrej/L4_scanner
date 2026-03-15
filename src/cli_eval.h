@@ -30,7 +30,7 @@ typedef struct{
 	Scanner_mode_t mode;
 }Scanner_t;
 
-int eval_arguments(arguments_t *args, Scanner_t *scanner);
+int eval_arguments(Arguments_t *args, Scanner_t *scanner);
 
 int eval_ports(char* s_ports, Ports_t *ports);
 

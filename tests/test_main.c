@@ -30,6 +30,10 @@ int main(void) {
     run_test(test_interfaces_output, "test_interfaces_output", &tests_passed, &tests_failed);
     run_test(test_check_user_input_lo, "test_check_user_input_lo", &tests_passed, &tests_failed);
     run_test(test_check_user_input_eth0, "test_check_user_input_eth0", &tests_passed, &tests_failed);
+    run_test(test_ipv4_address_from_eth0, "test_ipv4_aadress_form_eth0", &tests_passed, &tests_failed);
+    run_test(test_ipv6_address_from_eth0, "test_ipv6_aadress_form_eth0", &tests_passed, &tests_failed);
+    run_test(test_ipv4_address_from_lo, "test_ipv4_aadress_form_lo", &tests_passed, &tests_failed);
+    run_test(test_ipv6_address_from_lo, "test_ipv6_aadress_form_lo", &tests_passed, &tests_failed);
 #endif
 
     int total = tests_passed + tests_failed;

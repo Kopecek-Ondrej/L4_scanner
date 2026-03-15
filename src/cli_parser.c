@@ -8,7 +8,7 @@
 #include "error_code.h"
 
 
-int parse_arguments(int argc, char* argv[], arguments_t *args) {
+int parse_arguments(int argc, char* argv[], Arguments_t *args) {
 	if(args == NULL){
 		return ERR_CLI_ARG;
 	}
@@ -64,9 +64,9 @@ int parse_arguments(int argc, char* argv[], arguments_t *args) {
 	return EXIT_OK;
 }
 
-void print_arguments(const arguments_t *args) {
+void print_arguments(const Arguments_t *args) {
 	if (args == NULL) {
-		printf("arguments_t: (null)\n");
+		printf("Arguments_t: (null)\n");
 		return;
 	}
 

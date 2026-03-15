@@ -7,7 +7,7 @@
 
 #define DECIMAL_BASE 10
 
-int eval_arguments(arguments_t *args, Scanner_t *scanner){
+int eval_arguments(Arguments_t *args, Scanner_t *scanner){
     if (args == NULL || scanner == NULL) {
         return ERR_CLI_ARG;
     }
@@ -25,9 +25,12 @@ int eval_arguments(arguments_t *args, Scanner_t *scanner){
             scanner->mode = MODE_SHOW_INTERFACE;
             return EXIT_OK;
         }
-        
-        scanner->interface = args->interface;
     }
+
+    if(args->interface == NULL){
+        RETURN_ERROR(ERR_CLI_ARG, "INTERFACE is mandatory parameter");
+    }
+    scanner->interface = args->interface;
 
     if(args->hostname == NULL){
         RETURN_ERROR(ERR_CLI_ARG, "HOST is mandatory parameter");

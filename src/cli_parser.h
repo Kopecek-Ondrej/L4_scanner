@@ -12,10 +12,10 @@ typedef struct {
     int arg_cnt;
     bool help;  //
     bool show_interface;    //
-} arguments_t;
+}Arguments_t;
 
-int parse_arguments(int argc, char* argv[], arguments_t *args);
+int parse_arguments(int argc, char* argv[], Arguments_t *args);
 
-void print_arguments(const arguments_t *args);
+void print_arguments(const Arguments_t *args);
 
 #endif // __CLI_PARSER__

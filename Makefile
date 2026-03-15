@@ -1,51 +1,61 @@
 CC := gcc
 CFLAGS := -g -pedantic -Werror -Wall -Wextra
-CPPFLAGS := -I.
+SRC_DIR := src
+BUILD_DIR := build
+CPPFLAGS := -I$(SRC_DIR)
 TEST_CPPFLAGS := $(CPPFLAGS) -DTEST_BUILD
 # Enable HOME_TEST=1 to include home-only interface test in test_main
 ifeq ($(HOME_TEST),1)
 TEST_CPPFLAGS += -DHOME_TEST
 endif
-TARGET := ipk-L4-scan
-SRCS := ipk-L4-scan.c cli_parser.c cli_eval.c error_code.c interface.c
-HEADERS := cli_parser.h cli_eval.h error_code.h interface.h
-OBJS := $(SRCS:.c=.o)
+
+ifeq ($(DEBUG),1)
+CPPFLAGS += -DDEBUG
+endif
+
+SRCS := $(wildcard $(SRC_DIR)/*.c)
+APP_SRC := $(SRC_DIR)/ipk-L4-scan.c
+LIB_SRCS := $(filter-out $(APP_SRC), $(SRCS))
+HEADERS := $(wildcard $(SRC_DIR)/*.h)
+OBJS := $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
+
+TARGET := $(BUILD_DIR)/ipk-L4-scan
 
 TEST_SRCS := tests/test_main.c tests/test_cli.c tests/test_interface.c tests/helper.c
-TEST_OBJS := $(TEST_SRCS:.c=.o)
-TEST_BIN := tests/test_main
-TEST_LIB_OBJS := cli_parser.test.o cli_eval.test.o error_code.test.o interface.test.o
+TEST_OBJS := $(TEST_SRCS:tests/%.c=$(BUILD_DIR)/tests/%.o)
+TEST_BIN := $(BUILD_DIR)/tests/test_main
+TEST_LIB_OBJS := $(LIB_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.test.o)
 
-.PHONY: all clean test
+.PHONY: all clean test run_test dirs
 
-all: $(TARGET)
+all: dirs $(TARGET)
 
-test: $(TEST_BIN)
+test: dirs $(TEST_BIN)
 
-
-$(TEST_BIN): $(TEST_OBJS) $(TEST_LIB_OBJS)
-	$(CC) $(CFLAGS) $^ -o $@
+dirs:
+	@mkdir -p $(BUILD_DIR) $(BUILD_DIR)/tests
 
 $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) $^ -o $@
 
-%.o: %.c $(HEADERS)
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c $(HEADERS)
+	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
-%.test.o: %.c $(HEADERS)
+$(BUILD_DIR)/%.test.o: $(SRC_DIR)/%.c $(HEADERS)
+	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) $(TEST_CPPFLAGS) -c $< -o $@
 
-tests/%.o: tests/%.c $(HEADERS)
+$(BUILD_DIR)/tests/%.o: tests/%.c $(HEADERS)
+	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) $(TEST_CPPFLAGS) -c $< -o $@
+
+$(TEST_BIN): $(TEST_OBJS) $(TEST_LIB_OBJS)
+	$(CC) $(CFLAGS) $^ -o $@
 
 run_test: $(TEST_BIN)
 	./$(TEST_BIN)
-	@rm -f $(OBJS)
-	@rm -f $(TARGET)
-	@rm -f $(TEST_OBJS) $(TEST_BIN) $(TEST_LIB_OBJS)
-
+	@rm -f $(OBJS) $(TARGET) $(TEST_OBJS) $(TEST_BIN) $(TEST_LIB_OBJS)
 
 clean:
-	@rm -f $(OBJS)
-	@rm -f $(TARGET)
-	@rm -f $(TEST_OBJS) $(TEST_BIN) $(TEST_LIB_OBJS)
+	@rm -f $(OBJS) $(TARGET) $(TEST_OBJS) $(TEST_BIN) $(TEST_LIB_OBJS)
