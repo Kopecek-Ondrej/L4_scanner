@@ -59,7 +59,7 @@ int test_ipv4_address_from_eth0(void){
         struct sockaddr_in *addr = (struct sockaddr_in *)&source.addr_ipv4;
         inet_ntop(AF_INET, &addr->sin_addr, str, sizeof(str));
 
-        ASSERT_EQ_STR(str, "254.44.209.0", "expected IPv4 adress does not match ");
+        ASSERT_EQ_STR("254.44.209.0", str, "expected IPv4 adress does not match ");
     }
 
     return 0;
@@ -77,7 +77,7 @@ int test_ipv6_address_from_eth0(void){
         struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&source.addr_ipv6;
         inet_ntop(AF_INET6, &addr6->sin6_addr, str, sizeof(str));
 
-        ASSERT_EQ_STR(str, "fe80::215:5dff:fe2c:d100", "expected IPv6 adress does not match ");
+        ASSERT_EQ_STR("fe80::215:5dff:fe2c:d100", str, "expected IPv6 adress does not match ");
     }
 
     return 0;
@@ -95,7 +95,7 @@ int test_ipv4_address_from_lo(void){
         struct sockaddr_in *addr = (struct sockaddr_in *)&source.addr_ipv4;
         inet_ntop(AF_INET, &addr->sin_addr, str, sizeof(str));
 
-        ASSERT_EQ_STR(str, "0.0.0.1", "expected IPv4 adress does not match ");
+        ASSERT_EQ_STR("0.0.0.1", str,"expected IPv4 adress does not match ");
     }
 
     return 0;
@@ -113,7 +113,7 @@ int test_ipv6_address_from_lo(void){
         struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&source.addr_ipv6;
         inet_ntop(AF_INET6, &addr6->sin6_addr, str, sizeof(str));
 
-        ASSERT_EQ_STR(str, "::1", "expected IPv6 adress does not match ");
+        ASSERT_EQ_STR("::1", str, "expected IPv6 adress does not match ");
     }
 
     return 0;

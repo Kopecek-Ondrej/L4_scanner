@@ -2,12 +2,22 @@
 #define __CLI_EVAL_H__
 #include "cli_parser.h"
 
+#define PORT_MAX 65535
+
+typedef enum{
+	SINGLE,
+	RANGE,
+	MULTIP,
+}Ports_def_type_t;
+
 typedef struct{
 	// TypeProtokol_t type;
 	char *ports_array;
-	// int port_cnt;
+	int port_cnt;
 	int min;
 	int max;
+
+	Ports_def_type_t type;
 }Ports_t;
 
 // typedef *Protokol_t pProtokol_t;
@@ -36,4 +46,11 @@ int eval_ports(char* s_ports, Ports_t *ports);
 
 void print_help();
 
+int parse_number(const char **str, int *value);
+
+int check_delimiter(const char **str);
+
+int next_port(const char **str, int *port);
+
+int count_ports(const char *s);
 #endif //__CLI_EVAL_H__

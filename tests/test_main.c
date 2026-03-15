@@ -1,42 +1,37 @@
 #include <stdio.h>
+#include "helper.h"
 #include "test_cli.h"
 #include "test_interface.h"
-
-
-
-static void run_test(int (*test_func)(void), const char *name, int *tests_passed, int *tests_failed) {
-    int rc = test_func();
-
-    if (rc == 0) {
-        (*tests_passed)++;
-    } else {
-        (*tests_failed)++;
-        fprintf(stderr, "Test failed: %s\n", name);
-    }
-}
-
-
+#include "test_address.h"
 
 int main(void) {
     int tests_passed = 0;
     int tests_failed = 0;
+    int total = 0;
 
-    run_test(test_help_sets_mode, "test_help_sets_mode", &tests_passed, &tests_failed );
-    run_test(test_missing_host_fails, "test_missing_host_fails",&tests_passed, &tests_failed);
-    run_test(test_trailing_comma_is_error, "test_trailing_comma_is_error", &tests_passed, &tests_failed);
+    run_test(test_help_sets_mode, "test_help_sets_mode", &tests_passed, &tests_failed, &total);
+    run_test(test_missing_host_fails, "test_missing_host_fails", &tests_passed, &tests_failed, &total);
+    run_test(test_trailing_comma_is_error, "test_trailing_comma_is_error", &tests_passed, &tests_failed, &total);
 
     // tests that rely on local interfaces
 #ifdef HOME_TEST
-    run_test(test_interfaces_output, "test_interfaces_output", &tests_passed, &tests_failed);
-    run_test(test_check_user_input_lo, "test_check_user_input_lo", &tests_passed, &tests_failed);
-    run_test(test_check_user_input_eth0, "test_check_user_input_eth0", &tests_passed, &tests_failed);
-    run_test(test_ipv4_address_from_eth0, "test_ipv4_aadress_form_eth0", &tests_passed, &tests_failed);
-    run_test(test_ipv6_address_from_eth0, "test_ipv6_aadress_form_eth0", &tests_passed, &tests_failed);
-    run_test(test_ipv4_address_from_lo, "test_ipv4_aadress_form_lo", &tests_passed, &tests_failed);
-    run_test(test_ipv6_address_from_lo, "test_ipv6_aadress_form_lo", &tests_passed, &tests_failed);
+    run_test(test_interfaces_output, "test_interfaces_output", &tests_passed, &tests_failed, &total);
+    run_test(test_check_user_input_lo, "test_check_user_input_lo", &tests_passed, &tests_failed, &total);
+    run_test(test_check_user_input_eth0, "test_check_user_input_eth0", &tests_passed, &tests_failed, &total);
+    run_test(test_ipv4_address_from_eth0, "test_ipv4_aadress_form_eth0", &tests_passed, &tests_failed, &total);
+    run_test(test_ipv6_address_from_eth0, "test_ipv6_aadress_form_eth0", &tests_passed, &tests_failed, &total);
+    run_test(test_ipv4_address_from_lo, "test_ipv4_aadress_form_lo", &tests_passed, &tests_failed, &total);
+    run_test(test_ipv6_address_from_lo, "test_ipv6_aadress_form_lo", &tests_passed, &tests_failed, &total);
 #endif
+    
+    run_test(test_resolve_hostname_user_set_ipv4,"test_resolve_hostname_user_set_ipv4", &tests_passed, &tests_failed, &total);
+    run_test(test_resolve_hostname_user_set_ipv6,"test_resolve_hostname_user_set_ipv6", &tests_passed, &tests_failed, &total);
+    run_test(test_resolve_hostname_user_invalid_ipv4,"test_resolve_hostname_user_invalid_ipv4", &tests_passed, &tests_failed, &total);
+    run_test(test_resolve_hostname_user_invalid_ipv6,"test_resolve_hostname_user_invalid_ipv6", &tests_passed, &tests_failed, &total);
 
-    int total = tests_passed + tests_failed;
+    putchar('\n');
+
+    total = tests_passed + tests_failed;
 
     if (tests_failed == 0) {
         printf("\033[32mALL TESTS PASSED (%d/%d)\033[0m\n", tests_passed, total);

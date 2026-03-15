@@ -29,3 +29,14 @@ int capture_stdout(char *buffer, size_t size, void (*func)(void))
 
     return n;
 }
+
+void run_test(int (*test_func)(void), const char *name, int *tests_passed, int *tests_failed, int *total) {
+    printf("[%d]: %s\n",++(*total), name);
+    int rc = test_func();
+    if (rc == 0) {
+        (*tests_passed)++;
+    } else {
+        (*tests_failed)++;
+        fprintf(stderr, "Test failed: %s\n", name);
+    }
+}

@@ -51,6 +51,7 @@ typedef struct {
 
 /* Resolves hostname to IPv4 string. Returns 0 on success, -1 on error. */
 int resolve_hostname(Scanner_t *scanner, Destination_addresses_t *destination);
+void free_destination_addresses(Destination_addresses_t *destination);
 
 int resolve_destination(const char *hostname, Destination_addresses_t *out);
 

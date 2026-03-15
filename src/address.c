@@ -31,8 +31,11 @@ int resolve_hostname(Scanner_t *scanner, Destination_addresses_t *destination){
     int err = 0;
 
     memset(destination, 0, sizeof(*destination));
+    memset(&sa4, 0, sizeof(sa4));
+    memset(&sa6, 0, sizeof(sa6));
 
     if(inet_pton(AF_INET, scanner->hostname, &(sa4.sin_addr)) == 1){
+        sa4.sin_family = AF_INET;
         destination->items = calloc(1, sizeof(Resolved_address_t));
         if(destination->items == NULL){
             RETURN_ERROR(ERR_SYS_MEM_ALLOC, "Memory allocation failure");
@@ -49,6 +52,7 @@ int resolve_hostname(Scanner_t *scanner, Destination_addresses_t *destination){
     }
 
     if(inet_pton(AF_INET6, scanner->hostname, &(sa6.sin6_addr)) == 1){
+        sa6.sin6_family = AF_INET6;
         destination->items = calloc(1, sizeof(Resolved_address_t));
         if(destination->items == NULL){
             RETURN_ERROR(ERR_SYS_MEM_ALLOC, "Memory allocation failure");
@@ -93,10 +97,13 @@ int resolve_destination(const char *hostname, Destination_addresses_t *destinati
     struct addrinfo *result_p = NULL;
 
     memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;      // IPv4 and IPv6
-    hints.ai_socktype = SOCK_STREAM;  // or 0 if you do not care here
+    hints.ai_family = AF_UNSPEC;      // allow both IPv4 and IPv6
+    hints.ai_socktype = SOCK_STREAM;  // keep TCP semantics
+    hints.ai_flags = AI_ADDRCONFIG;   // skip families not configured locally to avoid resolver timeouts
+    int rc = 0;
+    
 
-    int rc = getaddrinfo(hostname, NULL, &hints, &result);
+    DEBUG_TIME("getaddrinfo", rc = getaddrinfo(hostname, NULL, &hints, &result));
     if (rc != 0) {
         RETURN_ERROR(ERR_RESOLVE_HOST,
                     "Failed to resolve host '%s': %s",
@@ -105,29 +112,27 @@ int resolve_destination(const char *hostname, Destination_addresses_t *destinati
     }
         
 
-    size_t count = 0;
-    for (result_p = result; result_p != NULL; result_p = result_p->ai_next) {
-        if (result_p->ai_family == AF_INET || result_p->ai_family == AF_INET6)
-            count++;
-    }
-
-    if (count == 0) {
-        freeaddrinfo(result);
-        RETURN_ERROR(ERR_NO_USABLE_ADDR_FOUND,"Found no usable address");
-    }
-
-    destination->items = calloc(count, sizeof(Resolved_address_t));
-    if (destination->items == NULL) {
-        freeaddrinfo(result);
-        RETURN_ERROR(ERR_SYS_MEM_ALLOC, "Memory allocation failure");
-    }
-
-    destination->capacity = count;
+    size_t capacity = 0;
+    destination->items = NULL;
+    destination->capacity = 0;
     destination->count = 0;
 
     for (result_p = result; result_p != NULL; result_p = result_p->ai_next) {
         if (result_p->ai_family != AF_INET && result_p->ai_family != AF_INET6)
             continue;
+
+        if (destination->count == capacity) {
+            size_t new_capacity = capacity == 0 ? 4 : capacity * 2;
+            Resolved_address_t *new_items = realloc(destination->items,
+                                                    new_capacity * sizeof(Resolved_address_t));
+            if (new_items == NULL) {
+                free(destination->items);
+                freeaddrinfo(result);
+                RETURN_ERROR(ERR_SYS_MEM_ALLOC, "Memory allocation failure");
+            }
+            destination->items = new_items;
+            capacity = new_capacity;
+        }
 
         Resolved_address_t *item = &destination->items[destination->count];
 
@@ -141,6 +146,16 @@ int resolve_destination(const char *hostname, Destination_addresses_t *destinati
             destination->has_ipv6 = true;
 
         destination->count++;
+    }
+
+    destination->capacity = capacity;
+
+    if (destination->count == 0) {
+        free(destination->items);
+        destination->items = NULL;
+        destination->capacity = 0;
+        freeaddrinfo(result);
+        RETURN_ERROR(ERR_NO_USABLE_ADDR_FOUND,"Found no usable address");
     }
 
     freeaddrinfo(result);

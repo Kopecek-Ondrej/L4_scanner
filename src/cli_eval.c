@@ -4,8 +4,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 
 #define DECIMAL_BASE 10
+#define PARSE_END 33
 
 int eval_arguments(Arguments_t *args, Scanner_t *scanner){
     if (args == NULL || scanner == NULL) {
@@ -47,6 +49,7 @@ int eval_arguments(Arguments_t *args, Scanner_t *scanner){
         RETURN_ERROR(ERR_CLI_ARG, "PORTs must be specified");
     }else{
         int err;
+        
         err = eval_ports(args->t_ports, &scanner->TCP);
         if(err != EXIT_OK){
             return err;
@@ -83,15 +86,23 @@ int eval_ports(char* s_ports, Ports_t *ports){
 
         ports->min = (first < second) ? (int)first : (int)second;
         ports->max = (first > second) ? (int)first : (int)second;
+        ports->port_cnt = ports->max - ports->min + 1;
         ports->ports_array = NULL;
+        ports->type = RANGE;
     }else if(strchr(s_ports, ',') != NULL){
         // reject trailing comma "22,"
         size_t len = strlen(s_ports);
         if (len == 0 || s_ports[len - 1] == ',') {
             RETURN_ERROR(ERR_CLI_ARG, "Invalid port list: trailing comma");
         }
-        //forward validation
+        
+        int err = count_ports(s_ports);
+        if(err < 0){
+            RETURN_ERROR(ERR_CLI_ARG, "Invalid port list");
+        }
+        ports->port_cnt = err;
         ports->ports_array = s_ports;
+        ports->type = MULTIP;
     }else{
         char *end;
         long val = strtol(s_ports, &end, DECIMAL_BASE);
@@ -102,10 +113,12 @@ int eval_ports(char* s_ports, Ports_t *ports){
         }
         //same values mean only one port
         if(val < 1 || val > 65535){
-            RETURN_ERROR(ERR_CLI_ARG, "Invalid range");
+            RETURN_ERROR(ERR_PORT_RANGE, "Invalid range");
         }
+        ports->port_cnt = 1;
         ports->min = val;
         ports->max = val;
+        ports->type = SINGLE;
     }
     return 0;
 }
@@ -113,4 +126,72 @@ int eval_ports(char* s_ports, Ports_t *ports){
 void print_help(){
     fprintf(stdout, "FOLLOW THIS FORMAT: \n");
     fprintf(stdout, "./ipk-L4-scan -i INTERFACE [-u PORTS] [-t PORTS] HOST [-w TIMEOUT] [-h | --help]\n");
+}
+
+int parse_number(const char **str, int *value){
+    if (!isdigit(**str))
+        return ERR_CLI_ARG;
+
+    long num = 0;
+
+    while (isdigit(**str)) {
+        num = num * 10 + (**str - '0');
+
+        if (num > PORT_MAX)
+            return ERR_PORT_RANGE;
+
+        (*str)++;
+    }
+
+    *value = (int)num;
+    return EXIT_OK;
+}
+
+int check_delimiter(const char **str){
+    if (**str == '\0')
+        return PARSE_END;
+
+    if (**str != ',')
+        return ERR_CLI_ARG;
+
+    (*str)++;
+
+    if (**str == '\0')
+        return ERR_CLI_ARG;
+
+    return EXIT_OK;
+}
+
+int next_port(const char **str, int *port){
+    int rc;
+
+    rc = parse_number(str, port);
+    if (rc != EXIT_OK)
+        return ERR_CLI_ARG;
+
+    rc = check_delimiter(str);
+
+    if (rc == PARSE_END)
+        return EXIT_OK;
+
+    if (rc == ERR_CLI_ARG)
+        return ERR_CLI_ARG;
+
+    return EXIT_OK;
+}
+
+int count_ports(const char *s){
+    int port;
+    int count = 0;
+
+    while (*s) {
+        int rc = next_port(&s, &port);
+
+        if (rc == ERR_CLI_ARG)
+            return ERR_CLI_ARG;
+
+        count++;
+    }
+
+    return count;
 }

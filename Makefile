@@ -1,5 +1,5 @@
 CC := gcc
-CFLAGS := -g -pedantic -Werror -Wall -Wextra
+CFLAGS := -g -pedantic -Werror -Wall -Wextra -pthread
 SRC_DIR := src
 BUILD_DIR := build
 CPPFLAGS := -I$(SRC_DIR)
@@ -8,9 +8,13 @@ TEST_CPPFLAGS := $(CPPFLAGS) -DTEST_BUILD
 ifeq ($(HOME_TEST),1)
 TEST_CPPFLAGS += -DHOME_TEST
 endif
-
+# for debugginng printfs
 ifeq ($(DEBUG),1)
-CPPFLAGS += -DDEBUG
+TEST_CPPFLAGS += -DDEBUG
+endif
+# for debugging with time
+ifeq ($(DEBUG_T),1)
+TEST_CPPFLAGS += -DDEBUG_T
 endif
 
 SRCS := $(wildcard $(SRC_DIR)/*.c)
@@ -21,7 +25,7 @@ OBJS := $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 
 TARGET := $(BUILD_DIR)/ipk-L4-scan
 
-TEST_SRCS := tests/test_main.c tests/test_cli.c tests/test_interface.c tests/helper.c
+TEST_SRCS := tests/test_main.c tests/test_cli.c tests/test_interface.c tests/helper.c tests/test_address.c
 TEST_OBJS := $(TEST_SRCS:tests/%.c=$(BUILD_DIR)/tests/%.o)
 TEST_BIN := $(BUILD_DIR)/tests/test_main
 TEST_LIB_OBJS := $(LIB_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.test.o)

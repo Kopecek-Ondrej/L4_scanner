@@ -5,8 +5,6 @@
 #include <stdio.h>
 #include <string.h>
 
-int capture_stdout(char *buffer, size_t size, void (*func)(void));
-
 #define ASSERT_EQ_INT(expected, actual, msg)                                  \
     do{                                                                      \
         if((expected) != (actual)) {                                         \
@@ -28,5 +26,9 @@ int capture_stdout(char *buffer, size_t size, void (*func)(void));
             return 1;                                               \
         }                                                           \
     }while(0)                                                     \
-    
+
+void run_test(int (*test_func)(void), const char *name, int *tests_passed, int *tests_failed, int *total);
+
+int capture_stdout(char *buffer, size_t size, void (*func)(void));
+
 #endif // __HELPER_H_

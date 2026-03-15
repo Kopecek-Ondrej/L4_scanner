@@ -7,6 +7,7 @@
 #include "interface.h"
 #include "address.h"
 #include "error_code.h"
+#include "scanner.h"
 
 
 int main(int argc, char* argv[]){
@@ -38,7 +39,7 @@ int main(int argc, char* argv[]){
 			if(err != EXIT_OK) return err;
 			err = resolve_hostname(&scanner, &destination);
 			if(err != EXIT_OK) return err;
-			
+			err = scan_destinations(&scanner, &destination);
 			break;
 	}
 	
