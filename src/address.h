@@ -14,6 +14,7 @@ typedef struct{
     bool is_ipv4;
     struct sockaddr addr_ipv6;
     struct sockaddr addr_ipv4;
+    //todo zjistit port source
 }Source_address_t;
 
 typedef struct {
