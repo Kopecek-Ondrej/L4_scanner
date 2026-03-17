@@ -20,8 +20,20 @@
 #define ERR_SYS_MEM_ALLOC 54
 #define ERR_NO_USABLE_ADDR_FOUND 55
 
+#include <stdarg.h>
+#include <stddef.h>
 
+int any_null(size_t count, ...);
 
+#define RETURN_IF_NULL(code, ...)                          \
+    do {                                                   \
+        void *args[] = { __VA_ARGS__ };                    \
+        for (size_t i = 0; i < sizeof(args)/sizeof(args[0]); i++) { \
+            if (args[i] == NULL) {                         \
+                RETURN_ERROR(code, "NULL argument detected"); \
+            }                                              \
+        }                                                  \
+    } while (0)
 
 void print_error(int error_code, const char *fmt, ...);
 

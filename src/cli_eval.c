@@ -50,11 +50,11 @@ int eval_arguments(Arguments_t *args, Scanner_t *scanner){
     }else{
         int err;
         
-        err = eval_ports(args->t_ports, &scanner->TCP);
+        err = eval_ports(args->t_ports, &scanner->tcp_ports);
         if(err != EXIT_OK){
             return err;
         }
-        err = eval_ports(args->u_ports, &scanner->UDP);
+        err = eval_ports(args->u_ports, &scanner->udp_ports);
         if(err != EXIT_OK){
             return err;
         }

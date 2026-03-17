@@ -39,7 +39,7 @@ int main(int argc, char* argv[]){
 			if(err != EXIT_OK) return err;
 			err = resolve_hostname(&scanner, &destination);
 			if(err != EXIT_OK) return err;
-			err = scan_destinations(&scanner, &destination);
+			err = scan_destinations(&scanner, &destination, &source);
 			break;
 	}
 	

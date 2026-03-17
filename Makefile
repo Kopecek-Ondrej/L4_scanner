@@ -2,8 +2,9 @@ CC := gcc
 CFLAGS := -g -pedantic -Werror -Wall -Wextra -pthread
 SRC_DIR := src
 BUILD_DIR := build
-CPPFLAGS := -I$(SRC_DIR)
-TEST_CPPFLAGS := $(CPPFLAGS) -DTEST_BUILD
+CPPFLAGS := -I$(SRC_DIR) -MMD -MP
+# Tests include headers from tests/ alongside src/
+TEST_CPPFLAGS := $(CPPFLAGS) -Itests -DTEST_BUILD
 # Enable HOME_TEST=1 to include home-only interface test in test_main
 ifeq ($(HOME_TEST),1)
 TEST_CPPFLAGS += -DHOME_TEST
@@ -22,6 +23,7 @@ APP_SRC := $(SRC_DIR)/ipk-L4-scan.c
 LIB_SRCS := $(filter-out $(APP_SRC), $(SRCS))
 HEADERS := $(wildcard $(SRC_DIR)/*.h)
 OBJS := $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
+DEPS := $(OBJS:.o=.d)
 
 TARGET := $(BUILD_DIR)/ipk-L4-scan
 
@@ -29,6 +31,8 @@ TEST_SRCS := tests/test_main.c tests/test_cli.c tests/test_interface.c tests/hel
 TEST_OBJS := $(TEST_SRCS:tests/%.c=$(BUILD_DIR)/tests/%.o)
 TEST_BIN := $(BUILD_DIR)/tests/test_main
 TEST_LIB_OBJS := $(LIB_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.test.o)
+TEST_DEPS := $(TEST_OBJS:.o=.d)
+TEST_LIB_DEPS := $(TEST_LIB_OBJS:.o=.d)
 
 .PHONY: all clean test run_test dirs
 
@@ -42,15 +46,15 @@ dirs:
 $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) $^ -o $@
 
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c $(HEADERS)
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/%.test.o: $(SRC_DIR)/%.c $(HEADERS)
+$(BUILD_DIR)/%.test.o: $(SRC_DIR)/%.c
 	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) $(TEST_CPPFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/tests/%.o: tests/%.c $(HEADERS)
+$(BUILD_DIR)/tests/%.o: tests/%.c
 	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) $(TEST_CPPFLAGS) -c $< -o $@
 
@@ -62,4 +66,7 @@ run_test: $(TEST_BIN)
 	@rm -f $(OBJS) $(TARGET) $(TEST_OBJS) $(TEST_BIN) $(TEST_LIB_OBJS)
 
 clean:
-	@rm -f $(OBJS) $(TARGET) $(TEST_OBJS) $(TEST_BIN) $(TEST_LIB_OBJS)
+	@rm -f $(OBJS) $(TARGET) $(TEST_OBJS) $(TEST_BIN) $(TEST_LIB_OBJS) $(DEPS) $(TEST_DEPS) $(TEST_LIB_DEPS)
+
+# Auto-generated dependency files
+-include $(DEPS) $(TEST_DEPS) $(TEST_LIB_DEPS)

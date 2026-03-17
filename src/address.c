@@ -36,7 +36,7 @@ int resolve_hostname(Scanner_t *scanner, Destination_addresses_t *destination){
 
     if(inet_pton(AF_INET, scanner->hostname, &(sa4.sin_addr)) == 1){
         sa4.sin_family = AF_INET;
-        destination->items = calloc(1, sizeof(Resolved_address_t));
+        destination->items = calloc(1, sizeof(Resolved_address_t)); //prisk:: malloc
         if(destination->items == NULL){
             RETURN_ERROR(ERR_SYS_MEM_ALLOC, "Memory allocation failure");
         }
@@ -53,7 +53,7 @@ int resolve_hostname(Scanner_t *scanner, Destination_addresses_t *destination){
 
     if(inet_pton(AF_INET6, scanner->hostname, &(sa6.sin6_addr)) == 1){
         sa6.sin6_family = AF_INET6;
-        destination->items = calloc(1, sizeof(Resolved_address_t));
+        destination->items = calloc(1, sizeof(Resolved_address_t)); //prisk:: malloc
         if(destination->items == NULL){
             RETURN_ERROR(ERR_SYS_MEM_ALLOC, "Memory allocation failure");
         }
@@ -124,7 +124,7 @@ int resolve_destination(const char *hostname, Destination_addresses_t *destinati
         if (destination->count == capacity) {
             size_t new_capacity = capacity == 0 ? 4 : capacity * 2;
             Resolved_address_t *new_items = realloc(destination->items,
-                                                    new_capacity * sizeof(Resolved_address_t));
+                                                    new_capacity * sizeof(Resolved_address_t));//prisk: alloc here
             if (new_items == NULL) {
                 free(destination->items);
                 freeaddrinfo(result);

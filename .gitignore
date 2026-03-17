@@ -1,3 +1,4 @@
 *.o
 *main
 *scan
+build/

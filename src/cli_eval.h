@@ -28,8 +28,8 @@ typedef enum{
 }Scanner_mode_t;
 
 typedef struct{
-	Ports_t TCP;
-	Ports_t UDP;
+	Ports_t tcp_ports;
+	Ports_t udp_ports;
 	bool tcp_use;
 	bool udp_use;
 

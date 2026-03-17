@@ -10,3 +10,19 @@ void print_error(int errorCode, const char* message, ...) {
 	fprintf(stderr, "\n");
 	va_end(args);
 }
+
+int any_null(size_t count, ...) {
+    va_list args;
+    va_start(args, count);
+
+    for (size_t i = 0; i < count; i++) {
+        void *ptr = va_arg(args, void *);
+        if (ptr == NULL) {
+            va_end(args);
+            return 1; // found NULL
+        }
+    }
+
+    va_end(args);
+    return 0; // all good
+}

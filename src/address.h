@@ -23,6 +23,7 @@ typedef struct {
     int family;
 } Resolved_address_t;
 
+//help:: zde jsou vsechny IP adresy domenoveho nazvu
 typedef struct {
     Resolved_address_t *items;
     size_t count;
