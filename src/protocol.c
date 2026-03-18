@@ -216,7 +216,7 @@ int init_raw_sockets(Raw_sockets_t *socks) {
 
     // 3. Kontrola odesílacích socketů (kritické pro běh)
     if (socks->fd[TCP4_OUT] < 0 && socks->fd[TCP6_OUT] < 0) {
-        fprintf(stderr, "Chyba: Nepodařilo se otevřít TCP odesílací sockety (IPv4 ani IPv6). Jste root?\n");
+        fprintf(stderr, "Chyba: Nepodařilo se otevřít TCP odesílací sockety (IPv4 ani IPv6)\n");
         return -1;
     }
 
@@ -253,7 +253,7 @@ void close_raw_sockets(Raw_sockets_t *socks) {
     }
 }
 
-Packet_t* init_packets(Scanner_t *scanner,Destination_addresses_t *destination){
+Packet_t* init_packets(Scanner_t *scanner,Destination_addresses_t *destination, int *table_size){
     int packets_to_allocate = 0;
     Packet_t *packets;
     
@@ -273,5 +273,12 @@ Packet_t* init_packets(Scanner_t *scanner,Destination_addresses_t *destination){
         return NULL;
     }
 
+    *table_size = packets_to_allocate;
     return packets;
+}
+
+void free_packets(Packet_t *packets){
+    if(packets != NULL){
+        free(packets);
+    }
 }

@@ -2,6 +2,8 @@
 #define __PROTOKOL_H
 
 #include <stdint.h>
+#include <sys/socket.h>
+#include <time.h>
 #include "address.h"
 
 // Pseudo-hlavička pro IPv4
@@ -42,6 +44,8 @@ typedef struct {
     struct sockaddr_storage target_addr; // Cílová IP
     uint16_t port;                       // Cílový port
     proto_t proto;                       // TCP nebo UDP
+    socklen_t addr_len;                  // délka cílové adresy
+    int family;                          // AF_INET nebo AF_INET6
     
     // STAVOVÉ INFORMACE
     state_t status;
@@ -50,6 +54,12 @@ typedef struct {
     
     uint32_t seq_number;                 // Sekvenční číslo, které jsme poslali (pro TCP)
 } Packet_t;
+
+typedef struct{
+    Packet_t *packets;
+    int size;
+    int next_seq;
+}Table_packet_t;
 
 unsigned short checksum(unsigned short *ptr, int nbytes);
 
@@ -66,5 +76,6 @@ int build_tcp_packet(char *packet, int *packet_len,
 int init_raw_sockets(Raw_sockets_t *socks);
 void close_raw_sockets(Raw_sockets_t *socks);
 
-Packet_t* init_packets(Scanner_t *scanner,Destination_addresses_t *destination);
+Packet_t* init_packets(Scanner_t *scanner,Destination_addresses_t *destination, int *table_size);
+void free_packets(Packet_t *packets);
 #endif// __PROTOKOL_H

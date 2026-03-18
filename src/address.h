@@ -5,6 +5,9 @@
 #include <stdbool.h>
 #include <ifaddrs.h>
 #include "cli_eval.h"
+
+#include <arpa/inet.h>
+#include <netinet/in.h>
 //those are max length of adresses
 #define IPV4_ADDR_LEN 16 //+ null terminator
 #define IPV6_ADDR_LEN 40 //+ null terminator
@@ -33,8 +36,6 @@ typedef struct {
 } Destination_addresses_t;
 
 
-#include <arpa/inet.h>
-#include <netinet/in.h>
 
 #define ADDR_TO_STR(addr, buf)                                                   \
     do {                                                                         \

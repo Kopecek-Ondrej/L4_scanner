@@ -19,7 +19,7 @@
 #define ERR_RESOLVE_HOST  53
 #define ERR_SYS_MEM_ALLOC 54
 #define ERR_NO_USABLE_ADDR_FOUND 55
-
+#define ERR_SOCK_INIT 56
 #include <stdarg.h>
 #include <stddef.h>
 
