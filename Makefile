@@ -11,7 +11,7 @@ TEST_CPPFLAGS += -DHOME_TEST
 endif
 # for debugginng printfs
 ifeq ($(DEBUG),1)
-TEST_CPPFLAGS += -DDEBUG
+CPPFLAGS += -DDEBUG
 endif
 # for debugging with time
 ifeq ($(DEBUG_T),1)

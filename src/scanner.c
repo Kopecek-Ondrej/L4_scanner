@@ -186,8 +186,10 @@ int send_packets(Scanner_t *scanner, Destination_addresses_t *destination, Sourc
 
     }
 
-    if(!(scanner->udp_use && scanner->tcp_use)){
+    if((scanner->udp_use == false) && (scanner->tcp_use == false)){
         free_destination_addresses(destination);
+        DEBUG_PRINT("udp: %d, tcp: %d", scanner->udp_use, scanner->tcp_use);
+        printf("udp: %d, tcp: %d", scanner->udp_use, scanner->tcp_use);
         RETURN_ERROR(ERR_CLI_ARG,"No port has been selected");
     }
 

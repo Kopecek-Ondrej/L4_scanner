@@ -49,7 +49,7 @@ int eval_arguments(Arguments_t *args, Scanner_t *scanner){
         RETURN_ERROR(ERR_CLI_ARG, "PORTs must be specified");
     }else{
         int err;
-        
+
         err = eval_ports(args->t_ports, &scanner->tcp_ports);
         if(err != EXIT_OK){
             return err;
@@ -59,6 +59,9 @@ int eval_arguments(Arguments_t *args, Scanner_t *scanner){
             return err;
         }
     }
+
+    if(args->t_ports != NULL) scanner->tcp_use = true;
+    if(args->u_ports != NULL) scanner->udp_use = true;
 
     scanner->mode = MODE_SCAN;
     return EXIT_OK;
@@ -120,7 +123,7 @@ int eval_ports(char* s_ports, Ports_t *ports){
         ports->max = val;
         ports->type = SINGLE;
     }
-    return 0;
+    return EXIT_OK;
 }
 
 void print_help(){
