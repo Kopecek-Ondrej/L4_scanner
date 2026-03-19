@@ -2,6 +2,7 @@
 #include "address.h"
 #include "error_code.h"
 #include "protocol.h"
+#include <libnet.h>
 #include <netinet/icmp6.h>
 #include <netinet/in.h>
 #include <netinet/ip.h> // struct iphdr
@@ -30,208 +31,16 @@ void* receiver_thread_func(void* arg) {
 }
 
 int scan_destinations(Scanner_t* scanner, Destination_addresses_t* destination, Source_address_t* source, Table_packet_t* table) {
-    RETURN_IF_NULL(ERR_NO_ARGUMENTS, scanner, destination, source, table);
-
-    int err = 0;
-    Raw_sockets_t socks;
-    err = init_raw_sockets(&socks);
-    if(err != EXIT_OK)
-        RETURN_ERROR(ERR_SOCK_INIT, "Failed to initialize sockets");
-
-    Packet_t* packets = init_packets(scanner, destination, &(table->size));
-    if(packets == NULL)
-        RETURN_ERROR(ERR_SYS_MEM_ALLOC, "Failed to allocate memory");
-    table->packets = packets;
-    table->next_seq = 0;
-
-    volatile int running = 1;
-    Thread_args_t targs = {.socks = &socks, .table = table->packets, .size = table->size, .running = &running};
-    pthread_t recv_thread;
-    if(pthread_create(&recv_thread, NULL, receiver_thread_func, &targs) != 0) {
-        RETURN_ERROR(ERR_SYS_MEM_ALLOC, "Failed to start receiver thread");
-    }
-
-    err = send_packets(scanner, destination, source, &socks, table);
-    if(err != EXIT_OK)
-        return err;
-
-    int pending = 1;
-    while(pending) {
-        pending = 0;
-        for(int i = 0; i < table->size; i++) {
-            pthread_mutex_lock(&table_mutex);
-            Packet_t* p = &table->packets[i];
-            if(p->status != ST_PENDING) {
-                pthread_mutex_unlock(&table_mutex);
-                continue;
-            }
-
-            pending = 1;
-            long elapsed_ms = get_elapsed_ms(p->last_sent);
-            pthread_mutex_unlock(&table_mutex);
-
-            if(p->proto == SCAN_TCP) {
-                pthread_mutex_lock(&table_mutex);
-                if(p->tries == 1 && elapsed_ms >= scanner->timeout) {
-                    pthread_mutex_unlock(&table_mutex);
-                    Resolved_address_t dest = {0};
-                    dest.addr_len = p->addr_len;
-                    dest.family = p->family;
-                    memcpy(&dest.addr, &p->target_addr, p->addr_len);
-
-                    char send_buffer[4096];
-                    int packet_size = 0;
-                    uint16_t my_source_port = 12345;
-                    int sock = (dest.family == AF_INET) ? socks.fd[TCP4_OUT] : socks.fd[TCP6_OUT];
-
-                    build_tcp_packet(send_buffer, &packet_size, source, &dest, my_source_port, p->port);
-                    if(sendto(sock, send_buffer, packet_size, 0,
-                              (struct sockaddr*)&dest.addr, dest.addr_len) < 0) {
-                        perror("Odeslání TCP selhalo");
-                    }
-
-                    clock_gettime(CLOCK_MONOTONIC, &(p->last_sent));
-                    p->tries = 2;
-                    pthread_mutex_unlock(&table_mutex);
-                } else if(p->tries == 2 && elapsed_ms >= scanner->timeout) {
-                    p->status = ST_FILTERED;
-                    pthread_mutex_unlock(&table_mutex);
-                } else {
-                    pthread_mutex_unlock(&table_mutex);
-                }
-            } else { // SCAN_UDP
-                pthread_mutex_lock(&table_mutex);
-                if(elapsed_ms >= scanner->timeout) {
-                    p->status = ST_OPEN;
-                    pthread_mutex_unlock(&table_mutex);
-                } else {
-                    pthread_mutex_unlock(&table_mutex);
-                }
-            }
-        }
-    }
-
-    running = 0;
-    pthread_join(recv_thread, NULL);
-    close_raw_sockets(&socks);
-
-    return EXIT_OK;
 }
 
 void receive_packets(Raw_sockets_t* socks, Packet_t* packet_table, int table_size) {
-    struct pollfd p_fds[4];
-    p_fds[0].fd = socks->fd[TCP4_IN];
-    p_fds[1].fd = socks->fd[TCP6_IN];
-    p_fds[2].fd = socks->fd[UDP4_ICMP_IN];
-    p_fds[3].fd = socks->fd[UDP6_ICMP_IN];
-
-    for(int i = 0; i < 4; i++) {
-        p_fds[i].events = POLLIN;
-        p_fds[i].revents = 0;
-    }
-
-    unsigned char buffer[65536];
-    struct sockaddr_storage src_addr;
-
-    // Čekáme max 100ms, jestli se na některém socketu něco objeví
-    int ret = poll(p_fds, 4, 100);
-    if(ret <= 0)
-        return;
-
-    for(int i = 0; i < 4; i++) {
-        // Pokud daný socket hlásí, že má data...
-        if(p_fds[i].revents & POLLIN) {
-            // ...čteme VŠECHNY pakety, které v tom socketu teď leží
-            while(1) { // prisk:: zavisi na MSG_CONTWAIT
-                socklen_t addr_len = sizeof(src_addr);
-                int len = recvfrom(p_fds[i].fd, buffer, sizeof(buffer), MSG_DONTWAIT,
-                                   (struct sockaddr*)&src_addr, &addr_len);
-
-                // Pokud len < 0, znamená to, že buffer je prázdný (EAGAIN/EWOULDBLOCK)
-                if(len < 0)
-                    break;
-
-                uint16_t res_port = 0;
-                state_t res_status = ST_PENDING;
-                proto_t res_proto;
-                uint32_t res_ack = 0;
-
-                // --- ANALÝZA (IPv4/IPv6 TCP) ---
-                if(i == 0 || i == 1) {
-                    res_proto = SCAN_TCP;
-                    struct tcphdr* tcph;
-                    if(i == 0) { // IPv4
-                        if(len < (int)(sizeof(struct iphdr) + sizeof(struct tcphdr)))
-                            continue;
-                        struct iphdr* iph = (struct iphdr*)buffer;
-                        tcph = (struct tcphdr*)(buffer + (iph->ihl * 4));
-                    } else { // IPv6
-                        if(len < (int)(sizeof(struct ip6_hdr) + sizeof(struct tcphdr)))
-                            continue;
-                        tcph = (struct tcphdr*)(buffer + sizeof(struct ip6_hdr));
-                    }
-                    res_port = ntohs(tcph->source);
-                    res_ack = ntohl(tcph->ack_seq);
-                    if(tcph->syn && tcph->ack)
-                        res_status = ST_OPEN;
-                    else if(tcph->rst)
-                        res_status = ST_CLOSED;
-                }
-                // --- ANALÝZA (ICMP / UDP) ---
-                else {
-                    res_proto = SCAN_UDP;
-                    if(i == 2) { // IPv4 ICMP response to UDP
-                        if(len < (int)(sizeof(struct iphdr) + sizeof(struct icmphdr)))
-                            continue;
-
-                        struct iphdr* outer_ip = (struct iphdr*)buffer;
-                        int outer_len = outer_ip->ihl * 4;
-                        int offset = outer_len + (int)sizeof(struct icmphdr);
-
-                        if(len < offset + (int)sizeof(struct iphdr))
-                            continue;
-                        struct iphdr* inner_ip = (struct iphdr*)(buffer + offset);
-                        offset += inner_ip->ihl * 4;
-
-                        if(len < offset + (int)sizeof(struct udphdr))
-                            continue;
-                        struct udphdr* old_udph = (struct udphdr*)(buffer + offset);
-                        res_port = ntohs(old_udph->dest);
-                    } else { // IPv6 ICMP response to UDP
-                        int offset = (int)(sizeof(struct ip6_hdr) + sizeof(struct icmp6_hdr) + sizeof(struct ip6_hdr));
-                        if(len < offset + (int)sizeof(struct udphdr))
-                            continue;
-                        struct udphdr* old_udph = (struct udphdr*)(buffer + offset);
-                        res_port = ntohs(old_udph->dest);
-                    }
-                    res_status = ST_CLOSED;
-                }
-
-                // --- AKTUALIZACE TABULKY ---
-                if(res_status != ST_PENDING) {
-                    pthread_mutex_lock(&table_mutex);
-                    for(int j = 0; j < table_size; j++) {
-                        if(packet_table[j].port == res_port &&
-                           packet_table[j].proto == res_proto &&
-                           compare_ip((struct sockaddr*)&src_addr, (struct sockaddr*)&packet_table[j].target_addr)) {
-                            if(res_proto == SCAN_TCP && res_ack != (uint32_t)(packet_table[j].seq_number + 1)) {
-                                continue;
-                            }
-                            packet_table[j].status = res_status;
-                            break;
-                        }
-                    }
-                    pthread_mutex_unlock(&table_mutex);
-                }
-            } // konec while(1) - vyčerpali jsme všechny pakety z jednoho socketu
-        }
-    }
 }
 
 int send_packets(Scanner_t* scanner, Destination_addresses_t* destination, Source_address_t* source, Raw_sockets_t* socks, Table_packet_t* table) {
     RETURN_IF_NULL(ERR_NO_ARGUMENTS, scanner, destination, source, socks);
     int err = 0;
     for(size_t i = 0; i < destination->count; i++) {
+        // todo:: funkce ktera bude dava validni vystupni port
         if(scanner->tcp_use) {
             err = send_with_tcp(&(destination->items[i]), scanner, source, socks->fd[TCP4_OUT], socks->fd[TCP6_OUT], table);
             if(err != EXIT_OK)
@@ -258,27 +67,62 @@ int send_packets(Scanner_t* scanner, Destination_addresses_t* destination, Sourc
 int send_with_tcp(Resolved_address_t* items, Scanner_t* scanner, Source_address_t* source, int sock4, int sock6, Table_packet_t* table) {
     RETURN_IF_NULL(ERR_NO_ARGUMENTS, items, scanner, source, table);
 
-    char send_buffer[4096];
-    int packet_size = 0;
     uint16_t my_source_port = 12345; // todo::urcite musi zde byt nejaky volny port//musim napsat funkci, pro detekci meho portu
     uint16_t target_port;
+    libnet_ptag_t tcp4_tag = 0;
+    libnet_ptag_t tcp6_tag = 0;
+    libnet_t* l_v4 = NULL;
+    libnet_t* l_v6 = NULL;
+    char errbuf[LIBNET_ERRBUF_SIZE];
 
     for(int i = 0; i < scanner->tcp_ports.port_cnt; i++) {
         target_port = get_port(&(scanner->tcp_ports), table, items, SCAN_TCP, i);
         // 2. Odešleme paket pomocí správného socketu
         if(items->family == AF_INET && sock4 != -1) {
-            build_tcp_packet(send_buffer, &packet_size, source, items, my_source_port, target_port);
-            // Pro IPv4 posíláme celý datagram (včetně námi vyrobené IP hlavičky)
-            if(sendto(sock4, send_buffer, packet_size, 0,
-                      (struct sockaddr*)&(items->addr), items->addr_len) < 0) {
-                perror("Odeslání IPv4 selhalo");
+            l_v4 = libnet_init(LIBNET_RAW4, scanner->interface, errbuf);
+            if(l_v4 == NULL) {
+                fprintf(stderr, "libnet_init() failed: %s\n", errbuf);
+                return EXIT_FAILURE;
+            }
+
+            // uint32_t src_ip = libnet_get_ipaddr4(l_v4); // Get your own IP
+            // uint32_t dst_ip = libnet_name2addr4(l_v4, "8.8.8.8", LIBNET_RESOLVE);
+
+            tcp4_tag = build_tcp_ipv4(l, source->addr_ipv4, items->addr, my_source_port, target_port, tcp4_tag);
+            if(tcp_tag == -1) {
+                fprintf(stderr, "Error building TCP header: %s\n", libnet_geterror(l_v4));
+                libnet_destroy(l_v4);
+                return EXIT_FAILURE;
+            }
+            int bytes_sent = libnet_write(l_v4);
+            if(bytes_sent == -1) {
+                fprintf(stderr, "Write error: %s\n", libnet_geterror(l_v4));
+            } else {
+                printf("Successfully sent %d byte SYN packet to port %d\n", bytes_sent, target_port);
             }
         } else if(items->family == AF_INET6 && sock6 != -1) { // todo:: fix -1 as magic num
-            // Pro IPv6 posíláme jen TCP část (kernel si IP hlavičku dodá sám)
-            build_tcp_packet(send_buffer, &packet_size, source, items, my_source_port, target_port);
-            if(sendto(sock6, send_buffer, packet_size, 0,
-                      (struct sockaddr*)&(items->addr), items->addr_len) < 0) {
-                perror("Odeslání IPv6 selhalo");
+            // todo:: predavam ty parametry spatne musim je predelat, uvnitr funkce prijimaji jine typy
+
+            l_v6 = libnet_init(LIBNET_RAW6, scanner->interface, errbuf);
+            if(l_v6 == NULL) {
+                fprintf(stderr, "libnet_init() failed: %s\n", errbuf);
+                return EXIT_FAILURE;
+            }
+
+            // uint32_t src_ip = libnet_get_ipaddr4(l_v4); // Get your own IP
+            // uint32_t dst_ip = libnet_name2addr4(l_v4, "8.8.8.8", LIBNET_RESOLVE);
+
+            tcp6_tag = build_tcp_ipv6(l, source->addr_ipv6, items->addr, my_source_port, target_port, tcp6_tag);
+            if(tcp_tag == -1) {
+                fprintf(stderr, "Error building TCP header: %s\n", libnet_geterror(l_v4));
+                libnet_destroy(l_v6);
+                return EXIT_FAILURE;
+            }
+            int bytes_sent = libnet_write(l_v6);
+            if(bytes_sent == -1) {
+                fprintf(stderr, "Write error: %s\n", libnet_geterror(l_v6));
+            } else {
+                printf("Successfully sent %d byte SYN packet to port %d\n", bytes_sent, target_port);
             }
         }
 
@@ -299,7 +143,7 @@ int send_with_udp(Resolved_address_t* items, Scanner_t* scanner, Source_address_
         target_port = get_port(&(scanner->udp_ports), table, items, SCAN_UDP, i);
 
         if(items->family == AF_INET && sock4 != -1) {
-            build_udp_packet(send_buffer, &packet_size, source, items, my_source_port, target_port);
+            // build_udp_packet(send_buffer, &packet_size, source, items, my_source_port, target_port);
 
             if(sendto(sock4, send_buffer, packet_size, 0,
                       (struct sockaddr*)&(items->addr), items->addr_len) < 0) {
