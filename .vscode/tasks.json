@@ -53,6 +53,12 @@
             "problemMatcher": [
                 "$gcc"
             ]
+        },
+        {
+            "label": "check-format",
+            "type": "shell",
+            "command": "clang-format --dry-run --Werror ${file}",
+            "problemMatcher": []
         }
     ],
     "version": "2.0.0"

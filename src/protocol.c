@@ -218,7 +218,7 @@ int init_raw_sockets(Raw_sockets_t *socks) {
     // 3. Kontrola odesílacích socketů (kritické pro běh)
     if (socks->fd[TCP4_OUT] < 0 && socks->fd[TCP6_OUT] < 0) {
         fprintf(stderr, "Chyba: Nepodařilo se otevřít TCP odesílací sockety (IPv4 ani IPv6)\n");
-        if (errno = EPERM) printf("it is perrmision caused\n");
+        if (errno = EPERM) printf("it is perrmision caused\n");//help::remove this 
         return -1;
     }
 

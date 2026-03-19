@@ -1,30 +1,26 @@
 #include "address.h"
 #include "error_code.h"
 
-#include <string.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <netdb.h>
-#include <arpa/inet.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <stdbool.h>
 
-
-
-int is_ipv6(const char *ip)
-{
+int is_ipv6(const char* ip) {
     struct sockaddr_in6 sa;
     return inet_pton(AF_INET6, ip, &(sa.sin6_addr)) == 1;
 }
 
-int is_ipv4(const char *ip)
-{
+int is_ipv4(const char* ip) {
     struct sockaddr_in sa;
     return inet_pton(AF_INET, ip, &(sa.sin_addr)) == 1;
 }
 
-int resolve_hostname(Scanner_t *scanner, Destination_addresses_t *destination){
+int resolve_hostname(Scanner_t* scanner, Destination_addresses_t* destination) {
     // first check if the host isn't already an address
     struct sockaddr_in sa4;
     struct sockaddr_in6 sa6;
@@ -34,10 +30,10 @@ int resolve_hostname(Scanner_t *scanner, Destination_addresses_t *destination){
     memset(&sa4, 0, sizeof(sa4));
     memset(&sa6, 0, sizeof(sa6));
 
-    if(inet_pton(AF_INET, scanner->hostname, &(sa4.sin_addr)) == 1){
+    if(inet_pton(AF_INET, scanner->hostname, &(sa4.sin_addr)) == 1) {
         sa4.sin_family = AF_INET;
-        destination->items = calloc(1, sizeof(Resolved_address_t)); //prisk:: malloc
-        if(destination->items == NULL){
+        destination->items = calloc(1, sizeof(Resolved_address_t)); // prisk:: malloc
+        if(destination->items == NULL) {
             RETURN_ERROR(ERR_SYS_MEM_ALLOC, "Memory allocation failure");
         }
         destination->capacity = 1;
@@ -51,10 +47,10 @@ int resolve_hostname(Scanner_t *scanner, Destination_addresses_t *destination){
         return EXIT_OK;
     }
 
-    if(inet_pton(AF_INET6, scanner->hostname, &(sa6.sin6_addr)) == 1){
+    if(inet_pton(AF_INET6, scanner->hostname, &(sa6.sin6_addr)) == 1) {
         sa6.sin6_family = AF_INET6;
-        destination->items = calloc(1, sizeof(Resolved_address_t)); //prisk:: malloc
-        if(destination->items == NULL){
+        destination->items = calloc(1, sizeof(Resolved_address_t)); // prisk:: malloc
+        if(destination->items == NULL) {
             RETURN_ERROR(ERR_SYS_MEM_ALLOC, "Memory allocation failure");
         }
         destination->capacity = 1;
@@ -70,14 +66,14 @@ int resolve_hostname(Scanner_t *scanner, Destination_addresses_t *destination){
 
     // otherwise resolve the domain name
     err = resolve_destination(scanner->hostname, destination);
-    if(err != EXIT_OK) return err;
+    if(err != EXIT_OK)
+        return err;
 
     return EXIT_OK;
 }
 
-void free_destination_addresses(Destination_addresses_t *destination)
-{
-    if (destination == NULL)
+void free_destination_addresses(Destination_addresses_t* destination) {
+    if(destination == NULL)
         return;
 
     free(destination->items);
@@ -88,44 +84,41 @@ void free_destination_addresses(Destination_addresses_t *destination)
     destination->has_ipv6 = false;
 }
 
-int resolve_destination(const char *hostname, Destination_addresses_t *destination)
-{
+int resolve_destination(const char* hostname, Destination_addresses_t* destination) {
     memset(destination, 0, sizeof(*destination));
 
     struct addrinfo hints;
-    struct addrinfo *result = NULL;
-    struct addrinfo *result_p = NULL;
+    struct addrinfo* result = NULL;
+    struct addrinfo* result_p = NULL;
 
     memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;      // allow both IPv4 and IPv6
-    hints.ai_socktype = SOCK_STREAM;  // keep TCP semantics
-    hints.ai_flags = AI_ADDRCONFIG;   // skip families not configured locally to avoid resolver timeouts
+    hints.ai_family = AF_UNSPEC;     // allow both IPv4 and IPv6
+    hints.ai_socktype = SOCK_STREAM; // keep TCP semantics
+    hints.ai_flags = AI_ADDRCONFIG;  // skip families not configured locally to avoid resolver timeouts
     int rc = 0;
-    
 
     DEBUG_TIME("getaddrinfo", rc = getaddrinfo(hostname, NULL, &hints, &result));
-    if (rc != 0) {
+    if(rc != 0) {
         RETURN_ERROR(ERR_RESOLVE_HOST,
-                    "Failed to resolve host '%s': %s",
-                    hostname,
-                    gai_strerror(rc));
+                     "Failed to resolve host '%s': %s",
+                     hostname,
+                     gai_strerror(rc));
     }
-        
 
     size_t capacity = 0;
     destination->items = NULL;
     destination->capacity = 0;
     destination->count = 0;
 
-    for (result_p = result; result_p != NULL; result_p = result_p->ai_next) {
-        if (result_p->ai_family != AF_INET && result_p->ai_family != AF_INET6)
+    for(result_p = result; result_p != NULL; result_p = result_p->ai_next) {
+        if(result_p->ai_family != AF_INET && result_p->ai_family != AF_INET6)
             continue;
 
-        if (destination->count == capacity) {
+        if(destination->count == capacity) {
             size_t new_capacity = capacity == 0 ? 4 : capacity * 2;
-            Resolved_address_t *new_items = realloc(destination->items,
-                                                    new_capacity * sizeof(Resolved_address_t));//prisk: alloc here
-            if (new_items == NULL) {
+            Resolved_address_t* new_items = realloc(destination->items,
+                                                    new_capacity * sizeof(Resolved_address_t)); // prisk: alloc here
+            if(new_items == NULL) {
                 free(destination->items);
                 freeaddrinfo(result);
                 RETURN_ERROR(ERR_SYS_MEM_ALLOC, "Memory allocation failure");
@@ -134,15 +127,15 @@ int resolve_destination(const char *hostname, Destination_addresses_t *destinati
             capacity = new_capacity;
         }
 
-        Resolved_address_t *item = &destination->items[destination->count];
+        Resolved_address_t* item = &destination->items[destination->count];
 
         memcpy(&item->addr, result_p->ai_addr, result_p->ai_addrlen);
         item->addr_len = result_p->ai_addrlen;
         item->family = result_p->ai_family;
 
-        if (result_p->ai_family == AF_INET)
+        if(result_p->ai_family == AF_INET)
             destination->has_ipv4 = true;
-        else if (result_p->ai_family == AF_INET6)
+        else if(result_p->ai_family == AF_INET6)
             destination->has_ipv6 = true;
 
         destination->count++;
@@ -150,12 +143,12 @@ int resolve_destination(const char *hostname, Destination_addresses_t *destinati
 
     destination->capacity = capacity;
 
-    if (destination->count == 0) {
+    if(destination->count == 0) {
         free(destination->items);
         destination->items = NULL;
         destination->capacity = 0;
         freeaddrinfo(result);
-        RETURN_ERROR(ERR_NO_USABLE_ADDR_FOUND,"Found no usable address");
+        RETURN_ERROR(ERR_NO_USABLE_ADDR_FOUND, "Found no usable address");
     }
 
     freeaddrinfo(result);

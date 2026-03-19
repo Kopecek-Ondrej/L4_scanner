@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "cli_parser.h"
 #include "cli_eval.h"
 #include "error_code.h"
 #include "interface.h"
@@ -20,16 +19,16 @@ static void print_answers(const Table_packet_t *table) {
 		char ip[INET6_ADDRSTRLEN];
 		ADDR_TO_STR((struct sockaddr *)&p->target_addr, ip);
 
-		const char *proto = (p->proto == SCAN_TCP) ? "TCP" : "UDP";
-		const char *status = "PENDING";
+		const char *proto = (p->proto == SCAN_TCP) ? "tcp" : "udp";
+		const char *status = "pending";
 		switch (p->status) {
-			case ST_OPEN: status = "OPEN"; break;
-			case ST_CLOSED: status = "CLOSED"; break;
-			case ST_FILTERED: status = "FILTERED"; break;
-			case ST_PENDING: default: status = "PENDING"; break;
+			case ST_OPEN: status = "open"; break;
+			case ST_CLOSED: status = "closed"; break;
+			case ST_FILTERED: status = "filtered"; break;
+			case ST_PENDING: default: status = "pending"; break;
 		}
 
-		printf("%s %s:%u -> %s\n", proto, ip, p->port, status);
+		printf("%s %u %s %s\n", ip, p->port, proto, status);
 	}
 }
 

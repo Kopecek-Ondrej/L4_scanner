@@ -1,8 +1,22 @@
 #ifndef __CLI_EVAL_H__
 #define __CLI_EVAL_H__
-#include "cli_parser.h"
+#include <stdbool.h>
 
 #define PORT_MAX 65535
+#define DECIMAL_BASE 10
+#define PARSE_END 33
+#define DEFAULT_TIMEOUT 1000
+
+typedef struct {
+    char* interface; //
+    char* u_ports; //
+    char* t_ports; //
+    char* hostname; //
+    char* timeout; //
+    int arg_cnt;
+    bool help;  //
+    bool show_interface;    //
+}Arguments_t;
 
 typedef enum{
 	SINGLE,
@@ -40,6 +54,10 @@ typedef struct{
 	Scanner_mode_t mode;
 }Scanner_t;
 
+int parse_arguments(int argc, char* argv[], Arguments_t *args);
+
+void print_arguments(const Arguments_t *args);
+
 int eval_arguments(Arguments_t *args, Scanner_t *scanner);
 
 int eval_ports(char* s_ports, Ports_t *ports);
@@ -52,5 +70,5 @@ int check_delimiter(const char **str);
 
 int next_port(const char **str, int *port);
 
-int count_ports(const char *s);
+int count_ports(const char *s, int *port_cnt);
 #endif //__CLI_EVAL_H__

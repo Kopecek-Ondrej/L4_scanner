@@ -1,20 +1,91 @@
 #include "error_code.h"
 #include "cli_eval.h"
-#include "cli_parser.h"
+#include <getopt.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 #include <ctype.h>
 
-#define DECIMAL_BASE 10
-#define PARSE_END 33
+int parse_arguments(int argc, char* argv[], Arguments_t *args) {
+	if(args == NULL){
+		return ERR_CLI_ARG;
+	}
+    
+	if(argc == 2){
+		if(strcmp(argv[1], "--help") == 0){
+			args->help = true;
+		}else if(strcmp(argv[1], "-i") == 0){
+			args->show_interface = true;
+		}else if(strcmp(argv[1], "-h") == 0){
+			args->help = true;
+		}else{
+			RETURN_ERROR(ERR_CLI_ARG, "Invalid Arguments");
+		}
+		args->arg_cnt = 2;
+		// print_arguments(args);
+		return EXIT_OK;
+	}
+
+
+
+	int opt = 0;
+	while ((opt = getopt(argc, argv, "i:u:t:w:")) != -1) {
+		args->arg_cnt++;
+		switch (opt) {
+			case 'i':
+				args->interface = optarg;
+				// args->show_interface = true;
+				break;
+			case 'u':
+				args->u_ports = optarg;
+				break;
+			case 't':
+				args->t_ports = optarg;
+				break;
+			case 'w':
+				args->timeout = optarg;
+				break;
+			default:
+				RETURN_ERROR(ERR_CLI_ARG, "Invalid option: -%c", opt);
+		}
+	}
+
+	if (optind < argc) {
+		args->hostname = argv[optind];
+		optind++;
+	}
+
+	if (optind != argc) {
+		RETURN_ERROR(ERR_CLI_ARG, "Too many positional arguments");
+	}
+
+	return EXIT_OK;
+}
+
+void print_arguments(const Arguments_t *args) {
+	if (args == NULL) {
+		printf("Arguments_t: (null)\n");
+		return;
+	}
+
+	printf("interface: %s\n", args->interface ? args->interface : "(null)");
+	printf("u_ports: %s\n", args->u_ports ? args->u_ports : "(null)");
+	printf("t_ports: %s\n", args->t_ports ? args->t_ports : "(null)");
+	printf("hostname: %s\n", args->hostname ? args->hostname : "(null)");
+	printf("timeout: %s\n", args->timeout ? args->timeout : "(null)");
+	printf("arg_cnt: %d\n", args->arg_cnt);
+	printf("help: %s\n", args->help ? "true" : "false");
+	printf("show_interface: %s\n", args->show_interface ? "true" : "false");
+}
+
 
 int eval_arguments(Arguments_t *args, Scanner_t *scanner){
     if (args == NULL || scanner == NULL) {
         return ERR_CLI_ARG;
     }
     //default value
-    scanner->timeout = 1000;
+    scanner->timeout = DEFAULT_TIMEOUT;
 
     if(args->help){
         scanner->mode = MODE_SHOW_HELP;
@@ -95,15 +166,16 @@ int eval_ports(char* s_ports, Ports_t *ports){
     }else if(strchr(s_ports, ',') != NULL){
         // reject trailing comma "22,"
         size_t len = strlen(s_ports);
+        int port_cnt = 0;
         if (len == 0 || s_ports[len - 1] == ',') {
             RETURN_ERROR(ERR_CLI_ARG, "Invalid port list: trailing comma");
         }
         
-        int err = count_ports(s_ports);
-        if(err < 0){
+        int err = count_ports(s_ports,&port_cnt);
+        if(err != EXIT_OK){
             RETURN_ERROR(ERR_CLI_ARG, "Invalid port list");
         }
-        ports->port_cnt = err;
+        ports->port_cnt = port_cnt;
         ports->ports_array = s_ports;
         ports->type = MULTIP;
     }else{
@@ -146,6 +218,10 @@ int parse_number(const char **str, int *value){
         (*str)++;
     }
 
+    if(isalpha(**str)){
+        return ERR_CLI_ARG;
+    }
+
     *value = (int)num;
     return EXIT_OK;
 }
@@ -183,7 +259,7 @@ int next_port(const char **str, int *port){
     return EXIT_OK;
 }
 
-int count_ports(const char *s){
+int count_ports(const char *s, int *port_cnt){
     int port;
     int count = 0;
 
@@ -195,6 +271,6 @@ int count_ports(const char *s){
 
         count++;
     }
-
-    return count;
+    *port_cnt = count;
+    return EXIT_OK;
 }
