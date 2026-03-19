@@ -1,8 +1,8 @@
-#include <stdio.h>
 #include "helper.h"
+#include "test_address.h"
 #include "test_cli.h"
 #include "test_interface.h"
-#include "test_address.h"
+#include <stdio.h>
 
 int main(void) {
     int tests_passed = 0;
@@ -30,7 +30,6 @@ int main(void) {
     run_test(test_eval_arguments_help_mode, "test_eval_arguments_help_mode", &tests_passed, &tests_failed, &total);
     run_test(test_eval_arguments_show_interface_mode, "test_eval_arguments_show_interface_mode", &tests_passed, &tests_failed, &total);
 
-
     // tests that rely on local interfaces
 #ifdef HOME_TEST
     run_test(test_interfaces_output, "test_interfaces_output", &tests_passed, &tests_failed, &total);
@@ -41,17 +40,22 @@ int main(void) {
     run_test(test_ipv4_address_from_lo, "test_ipv4_aadress_form_lo", &tests_passed, &tests_failed, &total);
     run_test(test_ipv6_address_from_lo, "test_ipv6_aadress_form_lo", &tests_passed, &tests_failed, &total);
 #endif
-    
-    run_test(test_resolve_hostname_user_set_ipv4,"test_resolve_hostname_user_set_ipv4", &tests_passed, &tests_failed, &total);
-    run_test(test_resolve_hostname_user_set_ipv6,"test_resolve_hostname_user_set_ipv6", &tests_passed, &tests_failed, &total);
-    run_test(test_resolve_hostname_user_invalid_ipv4,"test_resolve_hostname_user_invalid_ipv4", &tests_passed, &tests_failed, &total);
-    run_test(test_resolve_hostname_user_invalid_ipv6,"test_resolve_hostname_user_invalid_ipv6", &tests_passed, &tests_failed, &total);
+
+    run_test(test_resolve_hostname_user_set_ipv4, "test_resolve_hostname_user_set_ipv4", &tests_passed, &tests_failed, &total);
+    run_test(test_resolve_hostname_user_set_ipv6, "test_resolve_hostname_user_set_ipv6", &tests_passed, &tests_failed, &total);
+    run_test(test_resolve_hostname_user_invalid_ipv4, "test_resolve_hostname_user_invalid_ipv4", &tests_passed, &tests_failed, &total);
+    run_test(test_resolve_hostname_user_invalid_ipv6, "test_resolve_hostname_user_invalid_ipv6", &tests_passed, &tests_failed, &total);
+    run_test(test_compare_ip, "test_compare_ip", &tests_passed, &tests_failed, &total);
+    run_test(test_read_next_port_basic, "test_read_next_port_basic", &tests_passed, &tests_failed, &total);
+    run_test(test_read_next_port_second_token, "test_read_next_port_second_token", &tests_passed, &tests_failed, &total);
+    run_test(test_read_next_port_trailing_comma, "test_read_next_port_trailing_comma", &tests_passed, &tests_failed, &total);
+    run_test(test_get_port_variants, "test_get_port_variants", &tests_passed, &tests_failed, &total);
 
     putchar('\n');
 
     total = tests_passed + tests_failed;
 
-    if (tests_failed == 0) {
+    if(tests_failed == 0) {
         printf("\033[32mALL TESTS PASSED (%d/%d)\033[0m\n", tests_passed, total);
     } else {
         printf("\033[31mTests passed: %d\n", tests_passed);

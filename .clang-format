@@ -1,11 +1,19 @@
 BasedOnStyle: LLVM
+
 IndentWidth: 4
 TabWidth: 4
 UseTab: Never
+
 BreakBeforeBraces: Attach
 SpaceBeforeParens: Never
+SpacesInParentheses: false
+
 AllowShortIfStatementsOnASingleLine: false
 AllowShortLoopsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: None
+
 PointerAlignment: Left
 ColumnLimit: 0
+
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 1

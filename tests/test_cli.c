@@ -1,17 +1,18 @@
-#include <stdio.h>
-#include <string.h>
+#include "test_cli.h"
+
 #include "cli_eval.h"
 #include "error_code.h"
-#include "test_cli.h"
 #include "helper.h"
 
+#include <stdio.h>
+#include <string.h>
 
-int test_help_sets_mode(void){
-    char *argv[] = {"prog", "--help"};
-    int argc = (int)(sizeof(argv) / sizeof(argv[0]));
+int test_help_sets_mode(void) {
+    char* argv[] = {"prog", "--help"};
+    int   argc   = (int)(sizeof(argv) / sizeof(argv[0]));
 
-    Arguments_t args = {0};
-    Scanner_t scanner = {0};
+    Arguments_t args    = {0};
+    Scanner_t   scanner = {0};
 
     int rc = parse_arguments(argc, argv, &args);
     ASSERT_EQ_INT(EXIT_OK, rc, "parse_arguments help");
@@ -23,12 +24,12 @@ int test_help_sets_mode(void){
     return 0;
 }
 
-int test_missing_host_fails(void){
-    char *argv[] = {"prog", "-t", "22"};
-    int argc = (int)(sizeof(argv) / sizeof(argv[0]));
+int test_missing_host_fails(void) {
+    char* argv[] = {"prog", "-t", "22"};
+    int   argc   = (int)(sizeof(argv) / sizeof(argv[0]));
 
-    Arguments_t args = {0};
-    Scanner_t scanner = {0};
+    Arguments_t args    = {0};
+    Scanner_t   scanner = {0};
 
     int rc = parse_arguments(argc, argv, &args);
     ASSERT_EQ_INT(EXIT_OK, rc, "parse_arguments missing host");
@@ -38,12 +39,12 @@ int test_missing_host_fails(void){
     return 0;
 }
 
-int test_trailing_comma_is_error(void){
-    char *argv[] = {"prog", "-u", "22," , "host"};
-    int argc = (int)(sizeof(argv) / sizeof(argv[0]));
+int test_trailing_comma_is_error(void) {
+    char* argv[] = {"prog", "-u", "22,", "host"};
+    int   argc   = (int)(sizeof(argv) / sizeof(argv[0]));
 
-    Arguments_t args = {0};
-    Scanner_t scanner = {0};
+    Arguments_t args    = {0};
+    Scanner_t   scanner = {0};
 
     int rc = parse_arguments(argc, argv, &args);
     ASSERT_EQ_INT(EXIT_OK, rc, "parse_arguments trailing comma");
@@ -53,14 +54,14 @@ int test_trailing_comma_is_error(void){
     return EXIT_OK;
 }
 
-int test_cli_eval_1(void){
-    Arguments_t args ={0};
-    Scanner_t scan = {0};
-    args.interface = "eth0";
-    args.u_ports = "58,99,5,6,4,98,99,876,9";
-    args.t_ports = "88,9,123,2345,6000";
-    args.hostname = "www.seznam.cz";
-    args.arg_cnt = 5; //just not less than 3
+int test_cli_eval_1(void) {
+    Arguments_t args    = {0};
+    Scanner_t   scan    = {0};
+    args.interface      = "eth0";
+    args.u_ports        = "58,99,5,6,4,98,99,876,9";
+    args.t_ports        = "88,9,123,2345,6000";
+    args.hostname       = "www.seznam.cz";
+    args.arg_cnt        = 5; // just not less than 3
     args.show_interface = false;
 
     int rc = eval_arguments(&args, &scan);
@@ -76,78 +77,76 @@ int test_cli_eval_1(void){
     ASSERT_EQ_INT(9, scan.udp_ports.port_cnt, "WRONG port count");
     ASSERT_EQ_INT(5, scan.tcp_ports.port_cnt, "WRONG port count");
     return EXIT_OK;
-
 }
 
+// todo:: more relevant tests
 
-//todo:: more relevant tests
-
-int test_parse_number_invalid(void){
-    const char *s = "123abc";
-    int value = 0;
+int test_parse_number_invalid(void) {
+    const char* s     = "123abc";
+    int         value = 0;
 
     int rc = parse_number(&s, &value);
     ASSERT_EQ_INT(ERR_CLI_ARG, rc, "parsing alpha-numeric strings wrong");
     return EXIT_OK;
 }
 
-int test_parse_number_valid(void){
-    const char *s = "6008";
-    int value = 0;
+int test_parse_number_valid(void) {
+    const char* s     = "6008";
+    int         value = 0;
 
-    int rc = parse_number(&s,&value);
+    int rc = parse_number(&s, &value);
     ASSERT_EQ_INT(EXIT_OK, rc, "returned error");
     ASSERT_EQ_INT(6008, value, "parsed the number wrong");
     return EXIT_OK;
 }
 
-int test_parse_number_invalid_char(void){
-    const char *s = "x99";
-    int value = 0;
+int test_parse_number_invalid_char(void) {
+    const char* s     = "x99";
+    int         value = 0;
 
     int rc = parse_number(&s, &value);
     ASSERT_EQ_INT(ERR_CLI_ARG, rc, "parse_number invalid char rc");
     return EXIT_OK;
 }
 
-int test_parse_number_overflow(void){
-    const char *s = "70000";
-    int value = 0;
+int test_parse_number_overflow(void) {
+    const char* s     = "70000";
+    int         value = 0;
 
     int rc = parse_number(&s, &value);
     ASSERT_EQ_INT(ERR_PORT_RANGE, rc, "parse_number overflow rc");
     return EXIT_OK;
 }
 
-int test_check_delimiter_end(void){
-    const char *s = "";
+int test_check_delimiter_end(void) {
+    const char* s = "";
 
     int rc = check_delimiter(&s);
     ASSERT_EQ_INT(PARSE_END, rc, "check_delimiter end rc");
     return EXIT_OK;
 }
 
-int test_check_delimiter_missing_next(void){
-    const char *s = ",";
+int test_check_delimiter_missing_next(void) {
+    const char* s = ",";
 
     int rc = check_delimiter(&s);
     ASSERT_EQ_INT(ERR_CLI_ARG, rc, "check_delimiter missing next rc");
     return EXIT_OK;
 }
 
-int test_count_ports_valid(void){
-    const char *s = "1,2,3";
-    int port_cnt = 0;
+int test_count_ports_valid(void) {
+    const char* s        = "1,2,3";
+    int         port_cnt = 0;
 
-    int rc = count_ports(s,&port_cnt);
+    int rc = count_ports(s, &port_cnt);
     ASSERT_EQ_INT(EXIT_OK, rc, "returned error");
     ASSERT_EQ_INT(3, port_cnt, "count_ports valid rc");
     return EXIT_OK;
 }
 
-int test_eval_ports_range(void){
-    Ports_t ports = {0};
-    char input[] = "10-20";
+int test_eval_ports_range(void) {
+    Ports_t ports   = {0};
+    char    input[] = "10-20";
 
     int rc = eval_ports(input, &ports);
     ASSERT_EQ_INT(EXIT_OK, rc, "eval_ports range rc");
@@ -158,18 +157,18 @@ int test_eval_ports_range(void){
     return EXIT_OK;
 }
 
-int test_eval_ports_single_invalid(void){
-    Ports_t ports = {0};
-    char input[] = "0";
+int test_eval_ports_single_invalid(void) {
+    Ports_t ports   = {0};
+    char    input[] = "0";
 
     int rc = eval_ports(input, &ports);
     ASSERT_EQ_INT(ERR_CLI_ARG, rc, "eval_ports single invalid rc");
     return EXIT_OK;
 }
 
-int test_parse_arguments_invalid_option(void){
-    char *argv[] = {"prog", "-z"};
-    int argc = (int)(sizeof(argv) / sizeof(argv[0]));
+int test_parse_arguments_invalid_option(void) {
+    char* argv[] = {"prog", "-z"};
+    int   argc   = (int)(sizeof(argv) / sizeof(argv[0]));
 
     Arguments_t args = {0};
 
@@ -178,9 +177,9 @@ int test_parse_arguments_invalid_option(void){
     return EXIT_OK;
 }
 
-int test_parse_arguments_too_many_positionals(void){
-    char *argv[] = {"prog", "-i", "eth0", "host", "extra"};
-    int argc = (int)(sizeof(argv) / sizeof(argv[0]));
+int test_parse_arguments_too_many_positionals(void) {
+    char* argv[] = {"prog", "-i", "eth0", "host", "extra"};
+    int   argc   = (int)(sizeof(argv) / sizeof(argv[0]));
 
     Arguments_t args = {0};
 
@@ -189,9 +188,9 @@ int test_parse_arguments_too_many_positionals(void){
     return EXIT_OK;
 }
 
-int test_parse_arguments_show_interface_only(void){
-    char *argv[] = {"prog", "-i"};
-    int argc = (int)(sizeof(argv) / sizeof(argv[0]));
+int test_parse_arguments_show_interface_only(void) {
+    char* argv[] = {"prog", "-i"};
+    int   argc   = (int)(sizeof(argv) / sizeof(argv[0]));
 
     Arguments_t args = {0};
 
@@ -202,32 +201,32 @@ int test_parse_arguments_show_interface_only(void){
     return EXIT_OK;
 }
 
-int test_eval_arguments_missing_interface(void){
+int test_eval_arguments_missing_interface(void) {
     Arguments_t args = {0};
-    Scanner_t scan = {0};
-    args.hostname = "host";
-    args.t_ports = "22";
+    Scanner_t   scan = {0};
+    args.hostname    = "host";
+    args.t_ports     = "22";
 
     int rc = eval_arguments(&args, &scan);
     ASSERT_EQ_INT(ERR_CLI_ARG, rc, "eval_arguments missing interface");
     return EXIT_OK;
 }
 
-int test_eval_arguments_missing_ports(void){
+int test_eval_arguments_missing_ports(void) {
     Arguments_t args = {0};
-    Scanner_t scan = {0};
-    args.interface = "eth0";
-    args.hostname = "host";
+    Scanner_t   scan = {0};
+    args.interface   = "eth0";
+    args.hostname    = "host";
 
     int rc = eval_arguments(&args, &scan);
     ASSERT_EQ_INT(ERR_CLI_ARG, rc, "eval_arguments missing ports");
     return EXIT_OK;
 }
 
-int test_eval_arguments_help_mode(void){
+int test_eval_arguments_help_mode(void) {
     Arguments_t args = {0};
-    Scanner_t scan = {0};
-    args.help = true;
+    Scanner_t   scan = {0};
+    args.help        = true;
 
     int rc = eval_arguments(&args, &scan);
     ASSERT_EQ_INT(EXIT_OK, rc, "eval_arguments help rc");
@@ -235,15 +234,14 @@ int test_eval_arguments_help_mode(void){
     return EXIT_OK;
 }
 
-int test_eval_arguments_show_interface_mode(void){
-    Arguments_t args = {0};
-    Scanner_t scan = {0};
+int test_eval_arguments_show_interface_mode(void) {
+    Arguments_t args    = {0};
+    Scanner_t   scan    = {0};
     args.show_interface = true;
-    args.arg_cnt = 2;
+    args.arg_cnt        = 2;
 
     int rc = eval_arguments(&args, &scan);
     ASSERT_EQ_INT(EXIT_OK, rc, "eval_arguments show interface rc");
     ASSERT_EQ_INT(MODE_SHOW_INTERFACE, scan.mode, "eval_arguments show interface mode");
     return EXIT_OK;
 }
-
