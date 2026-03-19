@@ -2,18 +2,32 @@
 #include "address.h"
 #include "error_code.h"
 #include "protocol.h"
+#include <netinet/icmp6.h>
 #include <netinet/in.h>
 #include <netinet/ip.h> // struct iphdr
+#include <netinet/ip6.h>
+#include <netinet/ip_icmp.h>
 // #include <netinet/tcp_portsh>  // struct tcphdr
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
 #include <poll.h>
+#include <pthread.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <time.h>
 
+static pthread_mutex_t table_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 #define IPV4 4
 #define IPV6 6
+
+void* receiver_thread_func(void* arg) {
+    Thread_args_t* targs = (Thread_args_t*)arg;
+    while(*(targs->running)) {
+        receive_packets(targs->socks, targs->table, targs->size);
+    }
+    return NULL;
+}
 
 int scan_destinations(Scanner_t* scanner, Destination_addresses_t* destination, Source_address_t* source, Table_packet_t* table) {
     RETURN_IF_NULL(ERR_NO_ARGUMENTS, scanner, destination, source, table);
@@ -30,25 +44,36 @@ int scan_destinations(Scanner_t* scanner, Destination_addresses_t* destination, 
     table->packets = packets;
     table->next_seq = 0;
 
+    volatile int running = 1;
+    Thread_args_t targs = {.socks = &socks, .table = table->packets, .size = table->size, .running = &running};
+    pthread_t recv_thread;
+    if(pthread_create(&recv_thread, NULL, receiver_thread_func, &targs) != 0) {
+        RETURN_ERROR(ERR_SYS_MEM_ALLOC, "Failed to start receiver thread");
+    }
+
     err = send_packets(scanner, destination, source, &socks, table);
     if(err != EXIT_OK)
         return err;
 
     int pending = 1;
     while(pending) {
-        receive_packets(&socks, table->packets, table->size);
-
         pending = 0;
         for(int i = 0; i < table->size; i++) {
+            pthread_mutex_lock(&table_mutex);
             Packet_t* p = &table->packets[i];
-            if(p->status != ST_PENDING)
+            if(p->status != ST_PENDING) {
+                pthread_mutex_unlock(&table_mutex);
                 continue;
+            }
 
             pending = 1;
             long elapsed_ms = get_elapsed_ms(p->last_sent);
+            pthread_mutex_unlock(&table_mutex);
 
             if(p->proto == SCAN_TCP) {
+                pthread_mutex_lock(&table_mutex);
                 if(p->tries == 1 && elapsed_ms >= scanner->timeout) {
+                    pthread_mutex_unlock(&table_mutex);
                     Resolved_address_t dest = {0};
                     dest.addr_len = p->addr_len;
                     dest.family = p->family;
@@ -67,17 +92,27 @@ int scan_destinations(Scanner_t* scanner, Destination_addresses_t* destination, 
 
                     clock_gettime(CLOCK_MONOTONIC, &(p->last_sent));
                     p->tries = 2;
+                    pthread_mutex_unlock(&table_mutex);
                 } else if(p->tries == 2 && elapsed_ms >= scanner->timeout) {
                     p->status = ST_FILTERED;
+                    pthread_mutex_unlock(&table_mutex);
+                } else {
+                    pthread_mutex_unlock(&table_mutex);
                 }
             } else { // SCAN_UDP
+                pthread_mutex_lock(&table_mutex);
                 if(elapsed_ms >= scanner->timeout) {
                     p->status = ST_OPEN;
+                    pthread_mutex_unlock(&table_mutex);
+                } else {
+                    pthread_mutex_unlock(&table_mutex);
                 }
             }
         }
     }
 
+    running = 0;
+    pthread_join(recv_thread, NULL);
     close_raw_sockets(&socks);
 
     return EXIT_OK;
@@ -131,9 +166,9 @@ void receive_packets(Raw_sockets_t* socks, Packet_t* packet_table, int table_siz
                         struct iphdr* iph = (struct iphdr*)buffer;
                         tcph = (struct tcphdr*)(buffer + (iph->ihl * 4));
                     } else { // IPv6
-                        if(len < (int)sizeof(struct tcphdr))
+                        if(len < (int)(sizeof(struct ip6_hdr) + sizeof(struct tcphdr)))
                             continue;
-                        tcph = (struct tcphdr*)buffer;
+                        tcph = (struct tcphdr*)(buffer + sizeof(struct ip6_hdr));
                     }
                     res_port = ntohs(tcph->source);
                     res_ack = ntohl(tcph->ack_seq);
@@ -145,16 +180,36 @@ void receive_packets(Raw_sockets_t* socks, Packet_t* packet_table, int table_siz
                 // --- ANALÝZA (ICMP / UDP) ---
                 else {
                     res_proto = SCAN_UDP;
-                    int offset = (i == 2) ? (20 + 8 + 20) : (8 + 40);
-                    if(len < offset + (int)sizeof(struct udphdr))
-                        continue;
-                    struct udphdr* old_udph = (struct udphdr*)(buffer + offset);
-                    res_port = ntohs(old_udph->dest);
+                    if(i == 2) { // IPv4 ICMP response to UDP
+                        if(len < (int)(sizeof(struct iphdr) + sizeof(struct icmphdr)))
+                            continue;
+
+                        struct iphdr* outer_ip = (struct iphdr*)buffer;
+                        int outer_len = outer_ip->ihl * 4;
+                        int offset = outer_len + (int)sizeof(struct icmphdr);
+
+                        if(len < offset + (int)sizeof(struct iphdr))
+                            continue;
+                        struct iphdr* inner_ip = (struct iphdr*)(buffer + offset);
+                        offset += inner_ip->ihl * 4;
+
+                        if(len < offset + (int)sizeof(struct udphdr))
+                            continue;
+                        struct udphdr* old_udph = (struct udphdr*)(buffer + offset);
+                        res_port = ntohs(old_udph->dest);
+                    } else { // IPv6 ICMP response to UDP
+                        int offset = (int)(sizeof(struct ip6_hdr) + sizeof(struct icmp6_hdr) + sizeof(struct ip6_hdr));
+                        if(len < offset + (int)sizeof(struct udphdr))
+                            continue;
+                        struct udphdr* old_udph = (struct udphdr*)(buffer + offset);
+                        res_port = ntohs(old_udph->dest);
+                    }
                     res_status = ST_CLOSED;
                 }
 
                 // --- AKTUALIZACE TABULKY ---
                 if(res_status != ST_PENDING) {
+                    pthread_mutex_lock(&table_mutex);
                     for(int j = 0; j < table_size; j++) {
                         if(packet_table[j].port == res_port &&
                            packet_table[j].proto == res_proto &&
@@ -166,6 +221,7 @@ void receive_packets(Raw_sockets_t* socks, Packet_t* packet_table, int table_siz
                             break;
                         }
                     }
+                    pthread_mutex_unlock(&table_mutex);
                 }
             } // konec while(1) - vyčerpali jsme všechny pakety z jednoho socketu
         }
