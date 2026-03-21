@@ -27,7 +27,8 @@ int dispatch_tcp_packet(libnet_t* lib, int family, Source_address_t* source,
     Resolved_address_t* dest, uint16_t src_prt, uint16_t dst_prt,
     libnet_ptag_t* tcp_tag, libnet_ptag_t* ip_tag);
 
-void handle_icmp_v4(const u_char *icmp_ptr, Table_packet_t *table);
+void handle_icmp_v4(const u_char *icmp_ptr, size_t icmp_len, Table_packet_t *table);
+void handle_icmp_v6(const u_char *icmp_ptr, size_t icmp_len, Table_packet_t *table);
 void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char *packet);
 int setup_pcap_filter(pcap_t *handle, Destination_addresses_t *dest);
 int send_single_tcp_packet(Packet_t * packet, Parser_t *parser);

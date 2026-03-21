@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <ctype.h>
+#include <limits.h>
 
 int parse_arguments(int argc, char* argv[], Arguments_t *args) {
 	if(args == NULL){
@@ -113,7 +114,11 @@ int eval_arguments(Arguments_t *args, Parser_t *parser){
 
     if(args->timeout != NULL){
         char* end;
-        parser->timeout = strtol(args->timeout, &end, DECIMAL_BASE);
+        long timeout = strtol(args->timeout, &end, DECIMAL_BASE);
+        if (end == args->timeout || *end != '\0' || timeout <= 0 || timeout > INT_MAX) {
+            RETURN_ERROR(ERR_CLI_ARG, "Invalid timeout value");
+        }
+        parser->timeout = timeout;
     }
 
     if((args->u_ports == NULL) && (args->t_ports == NULL)){

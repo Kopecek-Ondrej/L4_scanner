@@ -552,65 +552,154 @@ int setup_pcap_filter(pcap_t *handle, Destination_addresses_t *dest) {
     return result;
 }
 
+static bool packet_matches_target(const Packet_t *pckt, int family,
+                                  const struct in_addr *src_ip4,
+                                  const struct in6_addr *src_ip6,
+                                  uint16_t src_port,
+                                  uint16_t dst_port) {
+    if (pckt->family != family) {
+        return false;
+    }
+
+    if (pckt->dst_port != src_port || pckt->src_port != dst_port) {
+        return false;
+    }
+
+    if (family == AF_INET) {
+        return pckt->dst_addr.addr.raddr4 == src_ip4->s_addr;
+    }
+
+    if (family == AF_INET6) {
+        return memcmp(&pckt->dst_addr.addr.raddr6, src_ip6, sizeof(struct in6_addr)) == 0;
+    }
+
+    return false;
+}
+
 
 void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
 
-    //todo:: safety with header:
-    if (header->caplen < 34) {
+    const size_t l2_hdr_len = 14;
+    if (header->caplen < l2_hdr_len + 1) {
         return; // Packet is too short/corrupted, ignore it
     }
 
     Table_packet_t *table = (Table_packet_t *)args;
     
     // 1. Přeskočíme Ethernet hlavičku (14 bajtů)
-    struct ip *ip_hdr = (struct ip *)(packet + 14);
+    struct ip *ip_hdr = (struct ip *)(packet + l2_hdr_len);
     int ip_version = ip_hdr->ip_v;
     
     uint16_t src_port = 0, dst_port = 0;
     uint8_t proto = 0;
-    // void *src_ip_ptr = NULL;
-    // uint32_t tcp_seq_ack = 0;
     bool is_rst = false;
     bool is_syn_ack = false;
+    bool parsed_l4 = false;
+    int packet_family = AF_UNSPEC;
+    struct in_addr src_ip4 = {0};
+    struct in6_addr src_ip6;
+    memset(&src_ip6, 0, sizeof(src_ip6));
 
     pthread_mutex_lock(&table_mutex);
 
     // 2. Parsování IP vrstvy (v4 nebo v6)
     if (ip_version == 4) {
+        if (header->caplen < l2_hdr_len + sizeof(struct ip)) {
+            pthread_mutex_unlock(&table_mutex);
+            return;
+        }
+
         proto = ip_hdr->ip_p;
-        // src_ip_ptr = &ip_hdr->ip_src.s_addr;
+        packet_family = AF_INET;
+        src_ip4 = ip_hdr->ip_src;
         // Posun na transportní vrstvu
         int ip_hl = ip_hdr->ip_hl * 4;
+        if (ip_hl < (int)sizeof(struct ip) || header->caplen < l2_hdr_len + (size_t)ip_hl) {
+            pthread_mutex_unlock(&table_mutex);
+            return;
+        }
         
         if (proto == IPPROTO_TCP) {
-            struct tcphdr *tcp = (struct tcphdr *)(packet + 14 + ip_hl);
+            if (header->caplen < l2_hdr_len + (size_t)ip_hl + sizeof(struct tcphdr)) {
+                pthread_mutex_unlock(&table_mutex);
+                return;
+            }
+
+            struct tcphdr *tcp = (struct tcphdr *)(packet + l2_hdr_len + ip_hl);
             src_port = ntohs(tcp->th_sport);
             dst_port = ntohs(tcp->th_dport);
-            // tcp_seq_ack = ntohl(tcp->th_ack);
             if (tcp->th_flags & TH_RST) is_rst = true;
             if ((tcp->th_flags & TH_SYN) && (tcp->th_flags & TH_ACK)) is_syn_ack = true;
+            parsed_l4 = true;
         } else if (proto == IPPROTO_UDP) {
-            struct udphdr *udp = (struct udphdr *)(packet + 14 + ip_hl);
+            if (header->caplen < l2_hdr_len + (size_t)ip_hl + sizeof(struct udphdr)) {
+                pthread_mutex_unlock(&table_mutex);
+                return;
+            }
+
+            struct udphdr *udp = (struct udphdr *)(packet + l2_hdr_len + ip_hl);
             src_port = ntohs(udp->uh_sport);
             dst_port = ntohs(udp->uh_dport);
+            parsed_l4 = true;
         } else if (proto == IPPROTO_ICMP) {
+            size_t icmp_off = l2_hdr_len + (size_t)ip_hl;
+            if (header->caplen >= icmp_off + sizeof(struct icmp)) {
+                handle_icmp_v4(packet + icmp_off, header->caplen - icmp_off, table);
+            }
             // Logika pro ICMP (UDP unreachable) viz níže
-            handle_icmp_v4(packet + 14 + ip_hl, table);
+            pthread_mutex_unlock(&table_mutex);
             return;
         }
     } else if (ip_version == 6) {
-        struct ip6_hdr *ip6 = (struct ip6_hdr *)(packet + 14);
+        if (header->caplen < l2_hdr_len + sizeof(struct ip6_hdr)) {
+            pthread_mutex_unlock(&table_mutex);
+            return;
+        }
+
+        struct ip6_hdr *ip6 = (struct ip6_hdr *)(packet + l2_hdr_len);
         proto = ip6->ip6_nxt;
-        // src_ip_ptr = &ip6->ip6_src;
+        packet_family = AF_INET6;
+        src_ip6 = ip6->ip6_src;
+        size_t l4_off = l2_hdr_len + sizeof(struct ip6_hdr);
 
         // Zjednodušeně bez extension headers:
         if (proto == IPPROTO_TCP) {
-            struct tcphdr *tcp = (struct tcphdr *)(packet + 14 + 40);
+            if (header->caplen < l4_off + sizeof(struct tcphdr)) {
+                pthread_mutex_unlock(&table_mutex);
+                return;
+            }
+
+            struct tcphdr *tcp = (struct tcphdr *)(packet + l4_off);
             src_port = ntohs(tcp->th_sport);
             dst_port = ntohs(tcp->th_dport);
             if (tcp->th_flags & TH_RST) is_rst = true;
-        } // ... podobně pro UDP a ICMPv6
-        //todo:: finish this
+            if ((tcp->th_flags & TH_SYN) && (tcp->th_flags & TH_ACK)) is_syn_ack = true;
+            parsed_l4 = true;
+        } else if (proto == IPPROTO_UDP) {
+            if (header->caplen < l4_off + sizeof(struct udphdr)) {
+                pthread_mutex_unlock(&table_mutex);
+                return;
+            }
+
+            struct udphdr *udp = (struct udphdr *)(packet + l4_off);
+            src_port = ntohs(udp->uh_sport);
+            dst_port = ntohs(udp->uh_dport);
+            parsed_l4 = true;
+        } else if (proto == IPPROTO_ICMPV6) {
+            if (header->caplen >= l4_off + sizeof(struct icmp6_hdr)) {
+                handle_icmp_v6(packet + l4_off, header->caplen - l4_off, table);
+            }
+            pthread_mutex_unlock(&table_mutex);
+            return;
+        }
+    } else {
+        pthread_mutex_unlock(&table_mutex);
+        return;
+    }
+
+    if (!parsed_l4) {
+        pthread_mutex_unlock(&table_mutex);
+        return;
     }
 
     // 3. Vyhledání v tabulce a aktualizace stavu
@@ -619,24 +708,29 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char
         
         // Match: Zdrojová IP příchozího packetu == Cílová IP odeslaného packetu
         // A zároveň porty sedí (příchozí src_port == náš dst_port)
-        if (pckt->dst_port == src_port && pckt->src_port == dst_port) {
+        if (!packet_matches_target(pckt, packet_family, &src_ip4, &src_ip6, src_port, dst_port)) {
+            continue;
+        }
             
-            if (pckt->proto == SCAN_TCP) {
+            if (pckt->proto == SCAN_TCP && proto == IPPROTO_TCP) {
                 if (is_rst) {
                     pckt->status = ST_CLOSED;
                 } else if (is_syn_ack) {
                     pckt->status = ST_OPEN;
                 }
-            } else if (pckt->proto == SCAN_UDP) {
+            } else if (pckt->proto == SCAN_UDP && proto == IPPROTO_UDP) {
                 // Pokud přišel UDP packet zpět (vzácné, ale možné), je OPEN
                 pckt->status = ST_OPEN;
             }
-        }
     }
     pthread_mutex_unlock(&table_mutex);
 }
 
-void handle_icmp_v4(const u_char *icmp_ptr, Table_packet_t *table) {
+void handle_icmp_v4(const u_char *icmp_ptr, size_t icmp_len, Table_packet_t *table) {
+    if (icmp_len < sizeof(struct icmp) + sizeof(struct ip) + sizeof(struct udphdr)) {
+        return;
+    }
+
     struct icmp *icmp_hdr = (struct icmp *)icmp_ptr;
     
     // Typ 3, Kód 3 = Port Unreachable
@@ -644,14 +738,58 @@ void handle_icmp_v4(const u_char *icmp_ptr, Table_packet_t *table) {
         // Uvnitř ICMP zprávy je kopie IP hlavičky a prvních 8 bajtů UDP hlavičky původního packetu
         struct ip *orig_ip = &icmp_hdr->icmp_ip;
         int orig_ip_hl = orig_ip->ip_hl * 4;
+        if (orig_ip_hl < (int)sizeof(struct ip)) {
+            return;
+        }
+
+        if (orig_ip->ip_p != IPPROTO_UDP) {
+            return;
+        }
+
+        if (icmp_len < sizeof(struct icmp) + (size_t)orig_ip_hl + sizeof(struct udphdr)) {
+            return;
+        }
+
         struct udphdr *orig_udp = (struct udphdr *)((u_char *)orig_ip + orig_ip_hl);
         
         uint16_t orig_dst_port = ntohs(orig_udp->uh_dport);
+        uint32_t orig_dst_ip = orig_ip->ip_dst.s_addr;
 
         for (int i = 0; i < table->size; i++) {
-            if (table->packets[i].dst_port == orig_dst_port && table->packets[i].proto == SCAN_UDP) {
+            if (table->packets[i].proto == SCAN_UDP &&
+                table->packets[i].family == AF_INET &&
+                table->packets[i].dst_port == orig_dst_port &&
+                table->packets[i].dst_addr.addr.raddr4 == orig_dst_ip) {
                 table->packets[i].status = ST_CLOSED;
             }
+        }
+    }
+}
+
+void handle_icmp_v6(const u_char *icmp_ptr, size_t icmp_len, Table_packet_t *table) {
+    if (icmp_len < sizeof(struct icmp6_hdr) + sizeof(struct ip6_hdr) + sizeof(struct udphdr)) {
+        return;
+    }
+
+    const struct icmp6_hdr *icmp6 = (const struct icmp6_hdr *)icmp_ptr;
+    if (icmp6->icmp6_type != ICMP6_DST_UNREACH || icmp6->icmp6_code != ICMP6_DST_UNREACH_NOPORT) {
+        return;
+    }
+
+    const struct ip6_hdr *orig_ip6 = (const struct ip6_hdr *)(icmp_ptr + sizeof(struct icmp6_hdr));
+    if (orig_ip6->ip6_nxt != IPPROTO_UDP) {
+        return;
+    }
+
+    const struct udphdr *orig_udp = (const struct udphdr *)((const u_char *)orig_ip6 + sizeof(struct ip6_hdr));
+    uint16_t orig_dst_port = ntohs(orig_udp->uh_dport);
+
+    for (int i = 0; i < table->size; i++) {
+        if (table->packets[i].proto == SCAN_UDP &&
+            table->packets[i].family == AF_INET6 &&
+            table->packets[i].dst_port == orig_dst_port &&
+            memcmp(&table->packets[i].dst_addr.addr.raddr6, &orig_ip6->ip6_dst, sizeof(struct in6_addr)) == 0) {
+            table->packets[i].status = ST_CLOSED;
         }
     }
 }
