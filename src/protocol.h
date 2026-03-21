@@ -1,10 +1,10 @@
 #ifndef __PROTOKOL_H
 #define __PROTOKOL_H
 
+#include "address.h"
 #include <stdint.h>
 #include <sys/socket.h>
 #include <time.h>
-#include "address.h"
 
 // Pseudo-hlavička pro IPv4
 struct pseudo_ipv4 {
@@ -24,20 +24,24 @@ struct pseudo_ipv6 {
     uint8_t next_header;
 };
 
-typedef enum {
-    TCP4_OUT, TCP6_OUT,
-    TCP4_IN,  TCP6_IN,
-    UDP4_OUT, UDP6_OUT,
-    UDP4_ICMP_IN, UDP6_ICMP_IN,
-    SOCKET_COUNT // Automaticky spočítá počet prvků (zde 8)
-} socket_type_t;
+// typedef enum {
+//     TCP4_OUT, TCP6_OUT,
+//     TCP4_IN,  TCP6_IN,
+//     UDP4_OUT, UDP6_OUT,
+//     UDP4_ICMP_IN, UDP6_ICMP_IN,
+//     SOCKET_COUNT // Automaticky spočítá počet prvků (zde 8)
+// } socket_type_t;
 
-typedef struct {
-    int fd[SOCKET_COUNT];
-} Raw_sockets_t;
+// typedef struct {
+//     int fd[SOCKET_COUNT];
+// } Raw_sockets_t;
 
-typedef enum { SCAN_TCP, SCAN_UDP } proto_t;
-typedef enum { ST_PENDING, ST_OPEN, ST_CLOSED, ST_FILTERED } state_t;
+typedef enum { SCAN_TCP,
+               SCAN_UDP } proto_t;
+typedef enum { ST_PENDING,
+               ST_OPEN,
+               ST_CLOSED,
+               ST_FILTERED } state_t;
 
 typedef struct {
     // UNIKÁTNÍ IDENTIFIKÁTORY (Klíč)
@@ -46,36 +50,36 @@ typedef struct {
     proto_t proto;                       // TCP nebo UDP
     socklen_t addr_len;                  // délka cílové adresy
     int family;                          // AF_INET nebo AF_INET6
-    
+
     // STAVOVÉ INFORMACE
     state_t status;
-    int tries;                           // Počet pokusů (1 nebo 2)
-    struct timespec last_sent;           // Čas posledního odeslání
-    
-    uint32_t seq_number;                 // Sekvenční číslo, které jsme poslali (pro TCP)
+    int tries;                 // Počet pokusů (1 nebo 2)
+    struct timespec last_sent; // Čas posledního odeslání
+
+    uint32_t seq_number; // Sekvenční číslo, které jsme poslali (pro TCP)
 } Packet_t;
 
-typedef struct{
-    Packet_t *packets;
+typedef struct {
+    Packet_t* packets;
     int size;
     int next_seq;
-}Table_packet_t;
+} Table_packet_t;
 
-unsigned short checksum(unsigned short *ptr, int nbytes);
+unsigned short checksum(unsigned short* ptr, int nbytes);
 
-int build_udp_packet(char *packet, int *packet_len, 
-                     Source_address_t *source, 
-                     Resolved_address_t *dest, 
+int build_udp_packet(char* packet, int* packet_len,
+                     Source_address_t* source,
+                     Resolved_address_t* dest,
                      uint16_t src_port, uint16_t dst_port);
 
-int build_tcp_packet(char *packet, int *packet_len, 
-                     Source_address_t *source, 
-                     Resolved_address_t *dest, 
+int build_tcp_packet(char* packet, int* packet_len,
+                     Source_address_t* source,
+                     Resolved_address_t* dest,
                      uint16_t src_port, uint16_t dst_port);
 
-int init_raw_sockets(Raw_sockets_t *socks);
-void close_raw_sockets(Raw_sockets_t *socks);
+// int init_raw_sockets(Raw_sockets_t* socks);
+// void close_raw_sockets(Raw_sockets_t* socks);
 
-Packet_t* init_packets(Scanner_t *scanner,Destination_addresses_t *destination, int *table_size);
-void free_packets(Packet_t *packets);
-#endif// __PROTOKOL_H
+Packet_t* init_packets(Scanner_t* scanner, Destination_addresses_t* destination, int* table_size);
+void free_packets(Packet_t* packets);
+#endif // __PROTOKOL_H

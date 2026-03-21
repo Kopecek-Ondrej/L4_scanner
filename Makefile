@@ -1,17 +1,20 @@
 CC := gcc
-CFLAGS := -g -pedantic -Werror -Wall -Wextra -pthread
+CFLAGS := -g3 -O1 -pedantic -Werror -Wall -Wextra -pthread
 SRC_DIR := src
 BUILD_DIR := build
 CPPFLAGS := -I$(SRC_DIR) -MMD -MP
 # Tests include headers from tests/ alongside src/
 TEST_CPPFLAGS := $(CPPFLAGS) -Itests -DTEST_BUILD
+#library for libnet
+LDLIBS := -lnet
 # Enable HOME_TEST=1 to include home-only interface test in test_main
 ifeq ($(HOME_TEST),1)
 TEST_CPPFLAGS += -DHOME_TEST
 endif
 # for debugginng printfs
 ifeq ($(DEBUG),1)
-CPPFLAGS += -DDEBUG
+CPPFLAGS += -DDEBUG 
+CPPFLAGS += -U_FORTIFY_SOURCE
 endif
 # for debugging with time
 ifeq ($(DEBUG_T),1)
@@ -27,7 +30,7 @@ DEPS := $(OBJS:.o=.d)
 
 TARGET := $(BUILD_DIR)/ipk-L4-scan
 
-TEST_SRCS := tests/test_main.c tests/test_cli.c tests/test_interface.c tests/helper.c tests/test_address.c
+TEST_SRCS := tests/test_main.c tests/test_cli.c tests/test_interface.c tests/helper.c tests/test_address.c tests/test_scanner.c
 TEST_OBJS := $(TEST_SRCS:tests/%.c=$(BUILD_DIR)/tests/%.o)
 TEST_BIN := $(BUILD_DIR)/tests/test_main
 TEST_LIB_OBJS := $(LIB_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.test.o)
@@ -44,7 +47,9 @@ dirs:
 	@mkdir -p $(BUILD_DIR) $(BUILD_DIR)/tests
 
 $(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) $^ -o $@
+	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
+# Nastaví oprávnění pro RAW sockety, aby program mohl běžet bez sudo
+	sudo setcap cap_net_raw,cap_net_admin=eip $@
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(@D)
@@ -59,7 +64,9 @@ $(BUILD_DIR)/tests/%.o: tests/%.c
 	$(CC) $(CFLAGS) $(TEST_CPPFLAGS) -c $< -o $@
 
 $(TEST_BIN): $(TEST_OBJS) $(TEST_LIB_OBJS)
-	$(CC) $(CFLAGS) $^ -o $@
+	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
+	
+	sudo setcap cap_net_raw,cap_net_admin=eip $@
 
 run_test: $(TEST_BIN)
 	./$(TEST_BIN)

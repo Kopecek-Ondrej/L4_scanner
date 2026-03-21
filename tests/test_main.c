@@ -2,6 +2,7 @@
 #include "test_address.h"
 #include "test_cli.h"
 #include "test_interface.h"
+#include "test_scanner.h"
 #include <stdio.h>
 
 int main(void) {
@@ -50,6 +51,9 @@ int main(void) {
     run_test(test_read_next_port_second_token, "test_read_next_port_second_token", &tests_passed, &tests_failed, &total);
     run_test(test_read_next_port_trailing_comma, "test_read_next_port_trailing_comma", &tests_passed, &tests_failed, &total);
     run_test(test_get_port_variants, "test_get_port_variants", &tests_passed, &tests_failed, &total);
+    run_test(test_send_with_tcp_null_args, "test_send_with_tcp_null_args", &tests_passed, &tests_failed, &total);
+    run_test(test_send_with_tcp_invalid_interface, "test_send_with_tcp_invalid_interface", &tests_passed, &tests_failed, &total);
+    run_test(test_send_with_tcp_table_not_modified_on_init_fail, "test_send_with_tcp_table_not_modified_on_init_fail", &tests_passed, &tests_failed, &total);
 
     putchar('\n');
 

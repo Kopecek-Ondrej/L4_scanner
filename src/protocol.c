@@ -20,63 +20,63 @@
 // and this:
 // libnet_name2addr6(l, "2001:db8::1", LIBNET_RESOLVE).
 
-libnet_ptag_t build_tcp_ipv4(libnet_t* l, uint32_t src_ip, uint32_t dst_ip,
-                             uint16_t src_prt, uint16_t dst_prt, libnet_ptag_t t_tag) {
-    // Build/Update TCP Header
-    t_tag = libnet_build_tcp(
-        src_prt, dst_prt, 0x01020304, 0, TH_SYN, 32767, 0, 0,
-        LIBNET_TCP_H, NULL, 0, l, t_tag);
+// libnet_ptag_t build_tcp_ipv4(libnet_t* l, uint32_t src_ip, uint32_t dst_ip,
+//                              uint16_t src_prt, uint16_t dst_prt, libnet_ptag_t t_tag) {
+//     // Build/Update TCP Header
+//     t_tag = libnet_build_tcp(
+//         src_prt, dst_prt, 0x01020304, 0, TH_SYN, 32767, 0, 0,
+//         LIBNET_TCP_H, NULL, 0, l, t_tag);
 
-    // Build/Update IPv4 Header
-    libnet_build_ipv4(
-        LIBNET_IPV4_H + LIBNET_TCP_H, 0, 242, 0, 64, IPPROTO_TCP, 0,
-        src_ip, dst_ip, NULL, 0, l, 0); // Usually IP tag is 0 or tracked similarly
+//     // Build/Update IPv4 Header
+//     libnet_build_ipv4(
+//         LIBNET_IPV4_H + LIBNET_TCP_H, 0, 242, 0, 64, IPPROTO_TCP, 0,
+//         src_ip, dst_ip, NULL, 0, l, 0); // Usually IP tag is 0 or tracked similarly
 
-    return t_tag;
-}
+//     return t_tag;
+// }
 
-libnet_ptag_t build_tcp_ipv6(libnet_t* l, struct libnet_in6_addr src_ip, struct libnet_in6_addr dst_ip,
-                             uint16_t src_prt, uint16_t dst_prt, libnet_ptag_t t_tag) {
-    // Build/Update TCP Header
-    t_tag = libnet_build_tcp(
-        src_prt, dst_prt, 0x01020304, 0, TH_SYN, 32767, 0, 0,
-        LIBNET_TCP_H, NULL, 0, l, t_tag);
+// libnet_ptag_t build_tcp_ipv6(libnet_t* l, struct libnet_in6_addr src_ip, struct libnet_in6_addr dst_ip,
+//                              uint16_t src_prt, uint16_t dst_prt, libnet_ptag_t t_tag) {
+//     // Build/Update TCP Header
+//     t_tag = libnet_build_tcp(
+//         src_prt, dst_prt, 0x01020304, 0, TH_SYN, 32767, 0, 0,
+//         LIBNET_TCP_H, NULL, 0, l, t_tag);
 
-    // Build/Update IPv6 Header
-    libnet_build_ipv6(
-        0, 0, LIBNET_TCP_H, IPPROTO_TCP, 64,
-        src_ip, dst_ip, NULL, 0, l, 0);
+//     // Build/Update IPv6 Header
+//     libnet_build_ipv6(
+//         0, 0, LIBNET_TCP_H, IPPROTO_TCP, 64,
+//         src_ip, dst_ip, NULL, 0, l, 0);
 
-    return t_tag;
-}
+//     return t_tag;
+// }
 
-libnet_ptag_t build_udp_ipv4(libnet_t* l, uint32_t src_ip, uint32_t dst_ip,
-                             uint16_t src_prt, uint16_t dst_prt, libnet_ptag_t u_tag) {
-    // Build/Update UDP Header
-    u_tag = libnet_build_udp(
-        src_prt, dst_prt, LIBNET_UDP_H, 0, NULL, 0, l, u_tag);
+// libnet_ptag_t build_udp_ipv4(libnet_t* l, uint32_t src_ip, uint32_t dst_ip,
+//                              uint16_t src_prt, uint16_t dst_prt, libnet_ptag_t u_tag) {
+//     // Build/Update UDP Header
+//     u_tag = libnet_build_udp(
+//         src_prt, dst_prt, LIBNET_UDP_H, 0, NULL, 0, l, u_tag);
 
-    // Build/Update IPv4 Header
-    libnet_build_ipv4(
-        LIBNET_IPV4_H + LIBNET_UDP_H, 0, 242, 0, 64, IPPROTO_UDP, 0,
-        src_ip, dst_ip, NULL, 0, l, 0);
+//     // Build/Update IPv4 Header
+//     libnet_build_ipv4(
+//         LIBNET_IPV4_H + LIBNET_UDP_H, 0, 242, 0, 64, IPPROTO_UDP, 0,
+//         src_ip, dst_ip, NULL, 0, l, 0);
 
-    return u_tag;
-}
+//     return u_tag;
+// }
 
-libnet_ptag_t build_udp_ipv6(libnet_t* l, struct libnet_in6_addr src_ip, struct libnet_in6_addr dst_ip,
-                             uint16_t src_prt, uint16_t dst_prt, libnet_ptag_t u_tag) {
-    // Build/Update UDP Header
-    u_tag = libnet_build_udp(
-        src_prt, dst_prt, LIBNET_UDP_H, 0, NULL, 0, l, u_tag);
+// libnet_ptag_t build_udp_ipv6(libnet_t* l, struct libnet_in6_addr src_ip, struct libnet_in6_addr dst_ip,
+//                              uint16_t src_prt, uint16_t dst_prt, libnet_ptag_t u_tag) {
+//     // Build/Update UDP Header
+//     u_tag = libnet_build_udp(
+//         src_prt, dst_prt, LIBNET_UDP_H, 0, NULL, 0, l, u_tag);
 
-    // Build/Update IPv6 Header
-    libnet_build_ipv6(
-        0, 0, LIBNET_UDP_H, IPPROTO_UDP, 64,
-        src_ip, dst_ip, NULL, 0, l, 0);
+//     // Build/Update IPv6 Header
+//     libnet_build_ipv6(
+//         0, 0, LIBNET_UDP_H, IPPROTO_UDP, 64,
+//         src_ip, dst_ip, NULL, 0, l, 0);
 
-    return u_tag;
-}
+//     return u_tag;
+// }
 
 // Funkce pro výpočet kontrolního součtu
 unsigned short checksum(unsigned short* ptr, int nbytes) {
@@ -102,7 +102,7 @@ int build_udp_packet(char* packet, int* packet_len,
         struct iphdr* iph = (struct iphdr*)packet;
         struct udphdr* udph = (struct udphdr*)(packet + sizeof(struct iphdr));
 
-        struct sockaddr_in* s4 = (struct sockaddr_in*)&(source->addr_ipv4);
+        struct sockaddr_in* s4 = (struct sockaddr_in*)&(source->addr4);
         struct sockaddr_in* d4 = (struct sockaddr_in*)&dest->addr;
 
         // IP hlavička
@@ -140,7 +140,7 @@ int build_udp_packet(char* packet, int* packet_len,
 
     } else if(dest->family == AF_INET6) {
         struct udphdr* udph = (struct udphdr*)packet;
-        struct sockaddr_in6* s6 = (struct sockaddr_in6*)&(source->addr_ipv6);
+        struct sockaddr_in6* s6 = (struct sockaddr_in6*)&(source->addr6);
         struct sockaddr_in6* d6 = (struct sockaddr_in6*)&dest->addr;
 
         udph->source = htons(src_port);
@@ -180,7 +180,7 @@ int build_tcp_packet(char* packet, int* packet_len,
         struct iphdr* iph = (struct iphdr*)packet;
         tcph = (struct tcphdr*)(packet + sizeof(struct iphdr));
 
-        struct sockaddr_in* s4 = (struct sockaddr_in*)&(source->addr_ipv4);
+        struct sockaddr_in* s4 = (struct sockaddr_in*)&(source->addr4);
         struct sockaddr_in* d4 = (struct sockaddr_in*)&dest->addr;
 
         // Sestavení IP hlavičky
@@ -230,7 +230,7 @@ int build_tcp_packet(char* packet, int* packet_len,
         // Budeme tedy stavět pouze TCP hlavičku.
         tcph = (struct tcphdr*)packet;
 
-        struct sockaddr_in6* s6 = (struct sockaddr_in6*)&(source->addr_ipv6);
+        struct sockaddr_in6* s6 = (struct sockaddr_in6*)&(source->addr6);
         struct sockaddr_in6* d6 = (struct sockaddr_in6*)&dest->addr;
 
         memset(tcph, 0, sizeof(struct tcphdr));
@@ -260,63 +260,63 @@ int build_tcp_packet(char* packet, int* packet_len,
     return -1;
 }
 
-int init_raw_sockets(Raw_sockets_t* socks) {
-    int one = 1;
+// // int init_raw_sockets(Raw_sockets_t* socks) {
+// //     int one = 1;
 
-    // 1. Inicializace všech prvků pole na -1
-    for(int i = 0; i < SOCKET_COUNT; i++) {
-        socks->fd[i] = -1;
-    }
+// //     // 1. Inicializace všech prvků pole na -1
+// //     for(int i = 0; i < SOCKET_COUNT; i++) {
+// //         socks->fd[i] = -1;
+// //     }
 
-    // 2. Vytvoření socketů
-    socks->fd[TCP4_OUT] = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
-    socks->fd[TCP6_OUT] = socket(AF_INET6, SOCK_RAW, IPPROTO_TCP);
-    socks->fd[TCP4_IN] = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
-    socks->fd[TCP6_IN] = socket(AF_INET6, SOCK_RAW, IPPROTO_TCP);
-    socks->fd[UDP4_OUT] = socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
-    socks->fd[UDP6_OUT] = socket(AF_INET6, SOCK_RAW, IPPROTO_UDP);
-    socks->fd[UDP4_ICMP_IN] = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
-    socks->fd[UDP6_ICMP_IN] = socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
+// //     // 2. Vytvoření socketů
+// //     socks->fd[TCP4_OUT] = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
+// //     socks->fd[TCP6_OUT] = socket(AF_INET6, SOCK_RAW, IPPROTO_TCP);
+// //     socks->fd[TCP4_IN] = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
+// //     socks->fd[TCP6_IN] = socket(AF_INET6, SOCK_RAW, IPPROTO_TCP);
+// //     socks->fd[UDP4_OUT] = socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
+// //     socks->fd[UDP6_OUT] = socket(AF_INET6, SOCK_RAW, IPPROTO_UDP);
+// //     socks->fd[UDP4_ICMP_IN] = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+// //     socks->fd[UDP6_ICMP_IN] = socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
 
-    // 3. Kontrola odesílacích socketů (kritické pro běh)
-    if(socks->fd[TCP4_OUT] < 0 && socks->fd[TCP6_OUT] < 0) {
-        fprintf(stderr, "Chyba: Nepodařilo se otevřít TCP odesílací sockety (IPv4 ani IPv6)\n");
-        if(errno = EPERM)
-            printf("it is perrmision caused\n"); // help::remove this
-        return -1;
-    }
+// //     // 3. Kontrola odesílacích socketů (kritické pro běh)
+// //     if(socks->fd[TCP4_OUT] < 0 && socks->fd[TCP6_OUT] < 0) {
+// //         fprintf(stderr, "Chyba: Nepodařilo se otevřít TCP odesílací sockety (IPv4 ani IPv6)\n");
+// //         if(errno = EPERM)
+// //             printf("it is perrmision caused\n"); // help::remove this
+// //         return -1;
+// //     }
 
-    // 4. Nastavení IP_HDRINCL pro IPv4 odesílací sockety
-    if(socks->fd[TCP4_OUT] >= 0) {
-        if(setsockopt(socks->fd[TCP4_OUT], IPPROTO_IP, IP_HDRINCL, &one, sizeof(one)) < 0) {
-            perror("Setsockopt TCP4_OUT IP_HDRINCL failed");
-        }
-    }
+// //     // 4. Nastavení IP_HDRINCL pro IPv4 odesílací sockety
+// //     if(socks->fd[TCP4_OUT] >= 0) {
+// //         if(setsockopt(socks->fd[TCP4_OUT], IPPROTO_IP, IP_HDRINCL, &one, sizeof(one)) < 0) {
+// //             perror("Setsockopt TCP4_OUT IP_HDRINCL failed");
+// //         }
+// //     }
 
-    if(socks->fd[UDP4_OUT] >= 0) {
-        if(setsockopt(socks->fd[UDP4_OUT], IPPROTO_IP, IP_HDRINCL, &one, sizeof(one)) < 0) {
-            perror("Setsockopt UDP4_OUT IP_HDRINCL failed");
-        }
-    }
+// //     if(socks->fd[UDP4_OUT] >= 0) {
+// //         if(setsockopt(socks->fd[UDP4_OUT], IPPROTO_IP, IP_HDRINCL, &one, sizeof(one)) < 0) {
+// //             perror("Setsockopt UDP4_OUT IP_HDRINCL failed");
+// //         }
+// //     }
 
-    // 5. Kontrola přijímacích socketů (volitelně, stačí varování)
-    for(int i = 0; i < SOCKET_COUNT; i++) {
-        if(socks->fd[i] < 0) {
-            RETURN_ERROR(-1, "error opening socket: %d\n", i);
-        }
-    }
+// //     // 5. Kontrola přijímacích socketů (volitelně, stačí varování)
+// //     for(int i = 0; i < SOCKET_COUNT; i++) {
+// //         if(socks->fd[i] < 0) {
+// //             RETURN_ERROR(-1, "error opening socket: %d\n", i);
+// //         }
+// //     }
 
-    return 0;
-}
+// //     return 0;
+// // }
 
-void close_raw_sockets(Raw_sockets_t* socks) {
-    for(int i = 0; i < SOCKET_COUNT; i++) {
-        if(socks->fd[i] != -1) {
-            close(socks->fd[i]);
-            socks->fd[i] = -1;
-        }
-    }
-}
+// void close_raw_sockets(Raw_sockets_t* socks) {
+//     for(int i = 0; i < SOCKET_COUNT; i++) {
+//         if(socks->fd[i] != -1) {
+//             close(socks->fd[i]);
+//             socks->fd[i] = -1;
+//         }
+//     }
+// }
 
 Packet_t* init_packets(Scanner_t* scanner, Destination_addresses_t* destination, int* table_size) {
     int packets_to_allocate = 0;

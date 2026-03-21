@@ -17,38 +17,41 @@
 #include <sys/socket.h>
 #include <time.h>
 
-static pthread_mutex_t table_mutex = PTHREAD_MUTEX_INITIALIZER;
+// static pthread_mutex_t table_mutex = PTHREAD_MUTEX_INITIALIZER;s
 
 #define IPV4 4
 #define IPV6 6
 
-void* receiver_thread_func(void* arg) {
-    Thread_args_t* targs = (Thread_args_t*)arg;
-    while(*(targs->running)) {
-        receive_packets(targs->socks, targs->table, targs->size);
-    }
-    return NULL;
-}
+// void* receiver_thread_func(void* arg) {
+//     Thread_args_t* targs = (Thread_args_t*)arg;
+//     while(*(targs->running)) {
+//         receive_packets(targs->socks, targs->table, targs->size);
+//     }
+//     return NULL;
+// }
 
 int scan_destinations(Scanner_t* scanner, Destination_addresses_t* destination, Source_address_t* source, Table_packet_t* table) {
+    return send_packets(scanner, destination, source, table);
 }
 
-void receive_packets(Raw_sockets_t* socks, Packet_t* packet_table, int table_size) {
-}
+// void receive_packets(Raw_sockets_t* socks, Packet_t* packet_table, int table_size) {
+// }
 
-int send_packets(Scanner_t* scanner, Destination_addresses_t* destination, Source_address_t* source, Raw_sockets_t* socks, Table_packet_t* table) {
-    RETURN_IF_NULL(ERR_NO_ARGUMENTS, scanner, destination, source, socks);
+int send_packets(Scanner_t* scanner, Destination_addresses_t* destination, Source_address_t* source, Table_packet_t* table) {
+    RETURN_IF_NULL(ERR_NO_ARGUMENTS, scanner, destination, source);
     int err = 0;
     for(size_t i = 0; i < destination->count; i++) {
         // todo:: funkce ktera bude dava validni vystupni port
+        Resolved_address_t* item = &(destination->items[i]);
+
         if(scanner->tcp_use) {
-            err = send_with_tcp(&(destination->items[i]), scanner, source, socks->fd[TCP4_OUT], socks->fd[TCP6_OUT], table);
+            err = send_with_tcp(item, scanner, source, table);
             if(err != EXIT_OK)
                 return err;
         }
 
         if(scanner->udp_use) {
-            err = send_with_udp(&(destination->items[i]), scanner, source, socks->fd[UDP4_OUT], socks->fd[UDP6_OUT], table);
+            err = send_with_udp(item, scanner, source, table);
             if(err != EXIT_OK)
                 return err;
         }
@@ -64,101 +67,143 @@ int send_packets(Scanner_t* scanner, Destination_addresses_t* destination, Sourc
     return EXIT_OK;
 }
 
-int send_with_tcp(Resolved_address_t* items, Scanner_t* scanner, Source_address_t* source, int sock4, int sock6, Table_packet_t* table) {
-    RETURN_IF_NULL(ERR_NO_ARGUMENTS, items, scanner, source, table);
+int dispatch_udp_packet(libnet_t* lib, int family, Source_address_t* source,
+                        Resolved_address_t* dest, uint16_t src_prt, uint16_t dst_prt,
+                        libnet_ptag_t* udp_tag, libnet_ptag_t* ip_tag) {
+    if(family == AF_INET) {
+        // 1. Sestavení/Update UDP hlavičky
+        // Parametry: src_port, dst_port, total_len, checksum, payload, payload_len, lib, ptag
+        *udp_tag = libnet_build_udp(src_prt, dst_prt, LIBNET_UDP_H, 0,
+                                    NULL, 0, lib, *udp_tag);
+
+        // 2. Sestavení/Update IPv4 hlavičky
+        // IPPROTO_UDP je zde klíčový rozdíl
+        *ip_tag = libnet_build_ipv4(LIBNET_IPV4_H + LIBNET_UDP_H, 0, 242, 0, 64, IPPROTO_UDP, 0,
+                                    source->addr4, dest->addr.raddr4, NULL, 0, lib, *ip_tag);
+    } else { // AF_INET6
+        // 1. Sestavení/Update UDP hlavičky (stejné jako u v4)
+        *udp_tag = libnet_build_udp(src_prt, dst_prt, LIBNET_UDP_H, 0,
+                                    NULL, 0, lib, *udp_tag);
+
+        // 2. Sestavení/Update IPv6 hlavičky
+        *ip_tag = libnet_build_ipv6(0, 0, LIBNET_UDP_H, IPPROTO_UDP, 64,
+                                    source->addr6, dest->addr.raddr6, NULL, 0, lib, *ip_tag);
+    }
+
+    // Kontrola chyb při sestavování
+    if(*udp_tag == -1 || *ip_tag == -1) {
+        fprintf(stderr, "Error building UDP packet: %s\n", libnet_geterror(lib));
+        return -1;
+    }
+
+    // Odeslání paketu
+    if(libnet_write(lib) == -1) {
+        fprintf(stderr, "Write error (UDP): %s\n", libnet_geterror(lib));
+        return -1;
+    }
+
+    return 0;
+}
+
+int dispatch_tcp_packet(libnet_t* lib, int family, Source_address_t* source,
+                        Resolved_address_t* dest, uint16_t src_prt, uint16_t dst_prt,
+                        libnet_ptag_t* tcp_tag, libnet_ptag_t* ip_tag) {
+    if(family == AF_INET) {
+        // TCP head
+        *tcp_tag = libnet_build_tcp(src_prt, dst_prt, 0x01020304, 0, TH_SYN, 32767, 0, 0,
+                                    LIBNET_TCP_H, NULL, 0, lib, *tcp_tag);
+
+        // ipv4 head
+        *ip_tag = libnet_build_ipv4(LIBNET_IPV4_H + LIBNET_TCP_H, 0, 242, 0, 64, IPPROTO_TCP, 0,
+                                    source->addr4, dest->addr.raddr4, NULL, 0, lib, *ip_tag);
+    } else {
+        // tcp head
+        *tcp_tag = libnet_build_tcp(src_prt, dst_prt, 0x01020304, 0, TH_SYN, 32767, 0, 0,
+                                    LIBNET_TCP_H, NULL, 0, lib, *tcp_tag);
+        // ipv6 head
+        *ip_tag = libnet_build_ipv6(0, 0, LIBNET_TCP_H, IPPROTO_TCP, 64,
+                                    source->addr6, dest->addr.raddr6, NULL, 0, lib, *ip_tag);
+    }
+
+    if(*tcp_tag == -1 || *ip_tag == -1) {
+        fprintf(stderr, "Error building packet: %s\n", libnet_geterror(lib));
+        return -1;
+    }
+
+    if(libnet_write(lib) == -1) {
+        fprintf(stderr, "Write error: %s\n", libnet_geterror(lib));
+        return -1;
+    }
+
+    return 0;
+}
+
+int send_with_tcp(Resolved_address_t* item, Scanner_t* scanner, Source_address_t* source, Table_packet_t* table) {
+    RETURN_IF_NULL(ERR_NO_ARGUMENTS, item, scanner, source, table);
 
     uint16_t my_source_port = 12345; // todo::urcite musi zde byt nejaky volny port//musim napsat funkci, pro detekci meho portu
     uint16_t target_port;
-    libnet_ptag_t tcp4_tag = 0;
-    libnet_ptag_t tcp6_tag = 0;
-    libnet_t* l_v4 = NULL;
-    libnet_t* l_v6 = NULL;
+
+    libnet_t* lib = NULL;
     char errbuf[LIBNET_ERRBUF_SIZE];
+    libnet_ptag_t tcp_tag = 0;
+    libnet_ptag_t ip_tag = 0;
+
+    int libnet_mode = (item->family == AF_INET) ? LIBNET_RAW4 : LIBNET_RAW6;
+    lib = libnet_init(libnet_mode, scanner->interface, errbuf);
+
+    if(lib == NULL) {
+        fprintf(stderr, "libnet_init() failed: %s\n", errbuf);
+        return EXIT_FAILURE;
+    }
 
     for(int i = 0; i < scanner->tcp_ports.port_cnt; i++) {
-        target_port = get_port(&(scanner->tcp_ports), table, items, SCAN_TCP, i);
-        // 2. Odešleme paket pomocí správného socketu
-        if(items->family == AF_INET && sock4 != -1) {
-            l_v4 = libnet_init(LIBNET_RAW4, scanner->interface, errbuf);
-            if(l_v4 == NULL) {
-                fprintf(stderr, "libnet_init() failed: %s\n", errbuf);
-                return EXIT_FAILURE;
-            }
+        target_port = get_port(&(scanner->tcp_ports), table, item, SCAN_TCP, i);
 
-            // uint32_t src_ip = libnet_get_ipaddr4(l_v4); // Get your own IP
-            // uint32_t dst_ip = libnet_name2addr4(l_v4, "8.8.8.8", LIBNET_RESOLVE);
+        if(dispatch_tcp_packet(lib, item->family, source, item, my_source_port, target_port, &tcp_tag, &ip_tag) == 0) {
+            DEBUG_PRINT("sent syn to %d", target_port);
 
-            tcp4_tag = build_tcp_ipv4(l, source->addr_ipv4, items->addr, my_source_port, target_port, tcp4_tag);
-            if(tcp_tag == -1) {
-                fprintf(stderr, "Error building TCP header: %s\n", libnet_geterror(l_v4));
-                libnet_destroy(l_v4);
-                return EXIT_FAILURE;
-            }
-            int bytes_sent = libnet_write(l_v4);
-            if(bytes_sent == -1) {
-                fprintf(stderr, "Write error: %s\n", libnet_geterror(l_v4));
-            } else {
-                printf("Successfully sent %d byte SYN packet to port %d\n", bytes_sent, target_port);
-            }
-        } else if(items->family == AF_INET6 && sock6 != -1) { // todo:: fix -1 as magic num
-            // todo:: predavam ty parametry spatne musim je predelat, uvnitr funkce prijimaji jine typy
-
-            l_v6 = libnet_init(LIBNET_RAW6, scanner->interface, errbuf);
-            if(l_v6 == NULL) {
-                fprintf(stderr, "libnet_init() failed: %s\n", errbuf);
-                return EXIT_FAILURE;
-            }
-
-            // uint32_t src_ip = libnet_get_ipaddr4(l_v4); // Get your own IP
-            // uint32_t dst_ip = libnet_name2addr4(l_v4, "8.8.8.8", LIBNET_RESOLVE);
-
-            tcp6_tag = build_tcp_ipv6(l, source->addr_ipv6, items->addr, my_source_port, target_port, tcp6_tag);
-            if(tcp_tag == -1) {
-                fprintf(stderr, "Error building TCP header: %s\n", libnet_geterror(l_v4));
-                libnet_destroy(l_v6);
-                return EXIT_FAILURE;
-            }
-            int bytes_sent = libnet_write(l_v6);
-            if(bytes_sent == -1) {
-                fprintf(stderr, "Write error: %s\n", libnet_geterror(l_v6));
-            } else {
-                printf("Successfully sent %d byte SYN packet to port %d\n", bytes_sent, target_port);
-            }
+        } else {
+            // if sending fails we continue
+            fprintf(stderr, "Failed to dispatch YCP packet to port: %d\n", target_port);
         }
-
-        packet_size = 0;
     }
+    libnet_destroy(lib);
     return EXIT_OK;
 }
 
-int send_with_udp(Resolved_address_t* items, Scanner_t* scanner, Source_address_t* source, int sock4, int sock6, Table_packet_t* table) {
-    RETURN_IF_NULL(ERR_NO_ARGUMENTS, items, scanner, source);
+int send_with_udp(Resolved_address_t* item, Scanner_t* scanner, Source_address_t* source, Table_packet_t* table) {
+    RETURN_IF_NULL(ERR_NO_ARGUMENTS, item, scanner, source, table);
 
-    char send_buffer[4096];
-    int packet_size = 0;
-    uint16_t my_source_port = 12345;
+    uint16_t my_source_port = 54321; // it has been recommended to keep this one fixed
     uint16_t target_port;
 
-    for(int i = 0; i < scanner->udp_ports.port_cnt; i++) {
-        target_port = get_port(&(scanner->udp_ports), table, items, SCAN_UDP, i);
+    libnet_t* lib = NULL;
+    char errbuf[LIBNET_ERRBUF_SIZE];
+    libnet_ptag_t udp_tag = 0;
+    libnet_ptag_t ip_tag = 0;
 
-        if(items->family == AF_INET && sock4 != -1) {
-            // build_udp_packet(send_buffer, &packet_size, source, items, my_source_port, target_port);
+    int libnet_mode = (item->family == AF_INET) ? LIBNET_RAW4 : LIBNET_RAW6;
+    lib = libnet_init(libnet_mode, scanner->interface, errbuf);
 
-            if(sendto(sock4, send_buffer, packet_size, 0,
-                      (struct sockaddr*)&(items->addr), items->addr_len) < 0) {
-                perror("Odeslání UDP IPv4 selhalo");
-            }
-        } else if(items->family == AF_INET6 && sock6 != -1) {
-            build_udp_packet(send_buffer, &packet_size, source, items, my_source_port, target_port);
-
-            if(sendto(sock6, send_buffer, packet_size, 0,
-                      (struct sockaddr*)&(items->addr), items->addr_len) < 0) {
-                perror("Odeslání UDP IPv6 selhalo");
-            }
-        }
-        packet_size = 0;
+    if(lib == NULL) {
+        fprintf(stderr, "libnet_init() failed: %s\n", errbuf);
+        return EXIT_FAILURE;
     }
+
+    for(int i = 0; i < scanner->udp_ports.port_cnt; i++) {
+        target_port = get_port(&(scanner->udp_ports), table, item, SCAN_UDP, i);
+
+        if(dispatch_tcp_packet(lib, item->family, source, item, my_source_port, target_port, &udp_tag, &ip_tag) == 0) {
+#ifdef DEBUG
+            printf("DEBUG: UDP packet sent to port %d\n", target_port);
+#endif
+        } else {
+            // if sending fails we continue
+            fprintf(stderr, "Failed to dispatch YCP packet to port: %d\n", target_port);
+        }
+    }
+    libnet_destroy(lib);
     return EXIT_OK;
 }
 
@@ -212,9 +257,9 @@ int get_port(Ports_t* ports, Table_packet_t* table, Resolved_address_t* items, p
     p->status = ST_PENDING;
     p->port = port;
     p->proto = protocol;
-    p->addr_len = items->addr_len;
+    // p->addr_len = items->addr_len;
     p->family = items->family;
-    memcpy(&p->target_addr, &items->addr, items->addr_len);
+    memcpy(&p->target_addr, &items->addr, sizeof(items->addr));
     clock_gettime(CLOCK_MONOTONIC, &(p->last_sent));
 
     return port;

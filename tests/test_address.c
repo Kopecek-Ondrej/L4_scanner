@@ -1,22 +1,21 @@
 #include "test_address.h"
-#include "cli_eval.h"
 #include "address.h"
+#include "cli_eval.h"
 #include "error_code.h"
 #include "helper.h"
 #include "scanner.h"
 
 #include <arpa/inet.h>
 
-
-int test_resolve_hostname_user_set_ipv4(void){
+int test_resolve_hostname_user_set_ipv4(void) {
     Scanner_t scanner = {0};
     Destination_addresses_t destination = {0};
     scanner.hostname = "150.24.155.5";
-    
+
     int rc = resolve_hostname(&scanner, &destination);
 
     char ip[INET6_ADDRSTRLEN];
-    ADDR_TO_STR((struct sockaddr *)&destination.items[0].addr, ip);
+    ADDR_TO_STR((struct sockaddr*)&destination.items[0].addr, ip);
 
     ASSERT_EQ_STR("150.24.155.5", ip, "expected IPv4 adress does not match ");
     ASSERT_EQ_INT(EXIT_OK, rc, "expected to exit ok");
@@ -26,15 +25,15 @@ int test_resolve_hostname_user_set_ipv4(void){
     return 0;
 }
 
-int test_resolve_hostname_user_set_ipv6(void){
+int test_resolve_hostname_user_set_ipv6(void) {
     Scanner_t scanner = {0};
     Destination_addresses_t destination = {0};
     scanner.hostname = "2001:0db8:85a3:0000:0000:8a2e:0370:7334";
-    
+
     int rc = resolve_hostname(&scanner, &destination);
 
     char ip[INET6_ADDRSTRLEN];
-    ADDR_TO_STR((struct sockaddr *)&destination.items[0].addr, ip);
+    ADDR_TO_STR((struct sockaddr*)&destination.items[0].addr, ip);
 
     ASSERT_EQ_STR("2001:db8:85a3::8a2e:370:7334", ip, "expected IPv6 adress does not match ");
     ASSERT_EQ_INT(EXIT_OK, rc, "expected to exit ok");
@@ -44,11 +43,11 @@ int test_resolve_hostname_user_set_ipv6(void){
     return 0;
 }
 
-int test_resolve_hostname_user_invalid_ipv4(void){
+int test_resolve_hostname_user_invalid_ipv4(void) {
     Scanner_t scanner = {0};
     Destination_addresses_t destination = {0};
     scanner.hostname = "350.24.155.5";
-    
+
     int rc = resolve_hostname(&scanner, &destination);
 
     ASSERT_EQ_INT(ERR_RESOLVE_HOST, rc, "expected to fail, invalid ipv4");
@@ -58,11 +57,11 @@ int test_resolve_hostname_user_invalid_ipv4(void){
     return 0;
 }
 
-int test_resolve_hostname_user_invalid_ipv6(void){
+int test_resolve_hostname_user_invalid_ipv6(void) {
     Scanner_t scanner = {0};
     Destination_addresses_t destination = {0};
     scanner.hostname = "2001:0db8:85a3dc:0000:0000:8a2e:0370:7334";
-    
+
     int rc = resolve_hostname(&scanner, &destination);
 
     ASSERT_EQ_INT(ERR_RESOLVE_HOST, rc, "expected to fail, invalid ipv6");
@@ -72,7 +71,7 @@ int test_resolve_hostname_user_invalid_ipv6(void){
     return 0;
 }
 
-int test_compare_ip(void){
+int test_compare_ip(void) {
     struct sockaddr_in a4 = {0};
     struct sockaddr_in b4 = {0};
     struct sockaddr_in c4 = {0};
@@ -88,14 +87,14 @@ int test_compare_ip(void){
     a6.sin6_family = AF_INET6;
     inet_pton(AF_INET6, "::1", &a6.sin6_addr);
 
-    ASSERT_EQ_INT(1, compare_ip((struct sockaddr *)&a4, (struct sockaddr *)&b4), "compare_ip equal IPv4");
-    ASSERT_EQ_INT(0, compare_ip((struct sockaddr *)&a4, (struct sockaddr *)&c4), "compare_ip different IPv4");
-    ASSERT_EQ_INT(0, compare_ip((struct sockaddr *)&a4, (struct sockaddr *)&a6), "compare_ip different family");
+    ASSERT_EQ_INT(1, compare_ip((struct sockaddr*)&a4, (struct sockaddr*)&b4), "compare_ip equal IPv4");
+    ASSERT_EQ_INT(0, compare_ip((struct sockaddr*)&a4, (struct sockaddr*)&c4), "compare_ip different IPv4");
+    ASSERT_EQ_INT(0, compare_ip((struct sockaddr*)&a4, (struct sockaddr*)&a6), "compare_ip different family");
 
     return EXIT_OK;
 }
 
-int test_read_next_port_basic(void){
+int test_read_next_port_basic(void) {
     char s[] = "12,34";
     int port = 0;
 
@@ -106,7 +105,7 @@ int test_read_next_port_basic(void){
     return EXIT_OK;
 }
 
-int test_read_next_port_second_token(void){
+int test_read_next_port_second_token(void) {
     char s[] = "12,34,56";
     int port = 0;
 
@@ -117,7 +116,7 @@ int test_read_next_port_second_token(void){
     return EXIT_OK;
 }
 
-int test_read_next_port_trailing_comma(void){
+int test_read_next_port_trailing_comma(void) {
     char s[] = "99,";
     int port = 0;
 
@@ -128,7 +127,7 @@ int test_read_next_port_trailing_comma(void){
     return EXIT_OK;
 }
 
-int test_get_port_variants(void){
+int test_get_port_variants(void) {
     Packet_t packets[5] = {0};
     Table_packet_t table = {0};
     table.packets = packets;
@@ -137,7 +136,7 @@ int test_get_port_variants(void){
 
     Resolved_address_t item = {0};
     item.family = AF_INET;
-    item.addr_len = sizeof(struct sockaddr_in);
+    // item.addr_len = sizeof(struct sockaddr_in);
 
     // SINGLE
     Ports_t single = {.min = 22, .max = 22, .port_cnt = 1, .type = SINGLE};
