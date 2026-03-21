@@ -37,8 +37,8 @@ int print_interfaces() {
     return EXIT_OK;
 }
 
-int check_for_interface(Scanner_t* scanner, Source_address_t* source) {
-    if(scanner == NULL || scanner->interface == NULL || source == NULL) {
+int check_for_interface(Parser_t* parser, Source_address_t* source) {
+    if(parser == NULL || parser->interface == NULL || source == NULL) {
         RETURN_ERROR(ERR_CLI_ARG, "Interface not specified");
     }
     struct ifaddrs* ifaddr = NULL;
@@ -53,10 +53,10 @@ int check_for_interface(Scanner_t* scanner, Source_address_t* source) {
     source->is_ipv6 = false;
 
     for(ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-        if(ifa->ifa_name == NULL || ifa->ifa_name == NULL)
+        if(ifa->ifa_name == NULL || ifa->ifa_addr == NULL)
             continue;
 
-        if(strcmp(ifa->ifa_name, scanner->interface) == 0) {
+        if(strcmp(ifa->ifa_name, parser->interface) == 0) {
             found = true;
             // here I must get the IPv4 and IPv6 adresses from for the source of communcation
             int family = ifa->ifa_addr->sa_family;
@@ -85,5 +85,5 @@ int check_for_interface(Scanner_t* scanner, Source_address_t* source) {
         return EXIT_OK;
     }
 
-    RETURN_ERROR(ERR_NO_INTERFACE_FOUND, "Entered interface: %s cannot be reached", scanner->interface);
+    RETURN_ERROR(ERR_NO_INTERFACE_FOUND, "Entered interface: %s cannot be reached", parser->interface);
 }

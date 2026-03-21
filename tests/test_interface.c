@@ -26,32 +26,32 @@ int test_interfaces_output(void) {
 }
 
 int test_check_user_input_lo(void) {
-    Scanner_t scanner = {0};
-    scanner.interface = "lo";
+    Parser_t parser = {0};
+    parser.interface = "lo";
     Source_address_t source = {0};
 
-    int rc = check_for_interface(&scanner, &source);
+    int rc = check_for_interface(&parser, &source);
     ASSERT_EQ_INT(EXIT_OK, rc, "usr input matches host machine network interface");
     return 0;
 }
 
 int test_check_user_input_eth0(void) {
-    Scanner_t scanner = {0};
-    scanner.interface = "eth0";
+    Parser_t parser = {0};
+    parser.interface = "eth0";
     Source_address_t source = {0};
 
-    int rc = check_for_interface(&scanner, &source);
+    int rc = check_for_interface(&parser, &source);
     ASSERT_EQ_INT(EXIT_OK, rc, "usr input matches host machine network interface");
     return 0;
 }
 
 int test_ipv4_address_from_eth0(void) {
-    Scanner_t scanner = {0};
-    scanner.interface = "eth0";
+    Parser_t parser = {0};
+    parser.interface = "eth0";
     Source_address_t source = {0};
     char str[INET6_ADDRSTRLEN];
 
-    int rc = check_for_interface(&scanner, &source);
+    int rc = check_for_interface(&parser, &source);
     ASSERT_EQ_INT(EXIT_OK, rc, "usr input matches host machine network interface");
     if(source.is_ipv4) {
         struct sockaddr_in* addr = (struct sockaddr_in*)&source.addr4;
@@ -64,12 +64,12 @@ int test_ipv4_address_from_eth0(void) {
 }
 
 int test_ipv6_address_from_eth0(void) {
-    Scanner_t scanner = {0};
-    scanner.interface = "eth0";
+    Parser_t parser = {0};
+    parser.interface = "eth0";
     Source_address_t source = {0};
     char str[INET6_ADDRSTRLEN];
 
-    int rc = check_for_interface(&scanner, &source);
+    int rc = check_for_interface(&parser, &source);
     ASSERT_EQ_INT(EXIT_OK, rc, "usr input matches host machine network interface");
     if(source.is_ipv6) {
         struct sockaddr_in6* addr6 = (struct sockaddr_in6*)&source.addr6;
@@ -82,12 +82,12 @@ int test_ipv6_address_from_eth0(void) {
 }
 
 int test_ipv4_address_from_lo(void) {
-    Scanner_t scanner = {0};
-    scanner.interface = "lo";
+    Parser_t parser = {0};
+    parser.interface = "lo";
     Source_address_t source = {0};
     char str[INET6_ADDRSTRLEN];
 
-    int rc = check_for_interface(&scanner, &source);
+    int rc = check_for_interface(&parser, &source);
     ASSERT_EQ_INT(EXIT_OK, rc, "usr input matches host machine network interface");
     if(source.is_ipv4) {
         struct sockaddr_in* addr = (struct sockaddr_in*)&source.addr4;
@@ -100,12 +100,12 @@ int test_ipv4_address_from_lo(void) {
 }
 
 int test_ipv6_address_from_lo(void) {
-    Scanner_t scanner = {0};
-    scanner.interface = "lo";
+    Parser_t parser = {0};
+    parser.interface = "lo";
     Source_address_t source = {0};
     char str[INET6_ADDRSTRLEN];
 
-    int rc = check_for_interface(&scanner, &source);
+    int rc = check_for_interface(&parser, &source);
     ASSERT_EQ_INT(EXIT_OK, rc, "usr input matches host machine network interface");
     if(source.is_ipv6) {
         struct sockaddr_in6* addr6 = (struct sockaddr_in6*)&source.addr6;

@@ -318,16 +318,16 @@ int build_tcp_packet(char* packet, int* packet_len,
 //     }
 // }
 
-Packet_t* init_packets(Scanner_t* scanner, Destination_addresses_t* destination, int* table_size) {
+Packet_t* init_packets(Parser_t* parser, Destination_addresses_t* destination, int* table_size) {
     int packets_to_allocate = 0;
     Packet_t* packets;
 
-    if(scanner->tcp_use) {
-        packets_to_allocate += scanner->tcp_ports.port_cnt;
+    if(parser->tcp_use) {
+        packets_to_allocate += parser->tcp_ports.port_cnt;
     }
 
-    if(scanner->udp_use) {
-        packets_to_allocate += scanner->udp_ports.port_cnt;
+    if(parser->udp_use) {
+        packets_to_allocate += parser->udp_ports.port_cnt;
     }
 
     packets_to_allocate *= destination->count;

@@ -5,6 +5,6 @@
 #include "address.h"
 
 int print_interfaces();
-int check_for_interface(Scanner_t *scanner, Source_address_t *source);
+int check_for_interface(Parser_t *parser, Source_address_t *source);
 
 #endif // __INTERFACE_H

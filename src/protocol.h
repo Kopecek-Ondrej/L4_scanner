@@ -45,10 +45,12 @@ typedef enum { ST_PENDING,
 
 typedef struct {
     // UNIKÁTNÍ IDENTIFIKÁTORY (Klíč)
-    struct sockaddr_storage target_addr; // Cílová IP
-    uint16_t port;                       // Cílový port
+    Resolved_address_t dst_addr; // Cílová IP
+    Source_address_t src_addr;
+    uint16_t dst_port;                       // Cílový port
+    uint16_t src_port;                      //zdrojovy port
     proto_t proto;                       // TCP nebo UDP
-    socklen_t addr_len;                  // délka cílové adresy
+    // socklen_t addr_len;                  // délka cílové adresy
     int family;                          // AF_INET nebo AF_INET6
 
     // STAVOVÉ INFORMACE
@@ -80,6 +82,6 @@ int build_tcp_packet(char* packet, int* packet_len,
 // int init_raw_sockets(Raw_sockets_t* socks);
 // void close_raw_sockets(Raw_sockets_t* socks);
 
-Packet_t* init_packets(Scanner_t* scanner, Destination_addresses_t* destination, int* table_size);
+Packet_t* init_packets(Parser_t* parser, Destination_addresses_t* destination, int* table_size);
 void free_packets(Packet_t* packets);
 #endif // __PROTOKOL_H

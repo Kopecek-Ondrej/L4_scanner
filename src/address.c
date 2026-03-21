@@ -20,7 +20,7 @@ int is_ipv4(const char* ip) {
     return inet_pton(AF_INET, ip, &(sa.sin_addr)) == 1;
 }
 
-int resolve_hostname(Scanner_t* scanner, Destination_addresses_t* destination) {
+int resolve_hostname(Parser_t* parser, Destination_addresses_t* destination) {
     // first check if the host isn't already an address
     struct addrinfo hints, *addr_list, *p;
     int status;
@@ -38,7 +38,7 @@ int resolve_hostname(Scanner_t* scanner, Destination_addresses_t* destination) {
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
 
-    if((status = getaddrinfo(scanner->hostname, NULL, &hints, &addr_list)) != 0) {
+    if((status = getaddrinfo(parser->hostname, NULL, &hints, &addr_list)) != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
         free(destination->items);
         return -1;

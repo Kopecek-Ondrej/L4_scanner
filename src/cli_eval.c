@@ -80,22 +80,22 @@ void print_arguments(const Arguments_t *args) {
 }
 
 
-int eval_arguments(Arguments_t *args, Scanner_t *scanner){
-    if (args == NULL || scanner == NULL) {
+int eval_arguments(Arguments_t *args, Parser_t *parser){
+    if (args == NULL || parser == NULL) {
         return ERR_CLI_ARG;
     }
     //default value
-    scanner->timeout = DEFAULT_TIMEOUT;
+    parser->timeout = DEFAULT_TIMEOUT;
 
     if(args->help){
-        scanner->mode = MODE_SHOW_HELP;
+        parser->mode = MODE_SHOW_HELP;
         return EXIT_OK;
     }
 
     if(args->show_interface){
         //call getifaddrs()
         if(args->arg_cnt == 2){
-            scanner->mode = MODE_SHOW_INTERFACE;
+            parser->mode = MODE_SHOW_INTERFACE;
             return EXIT_OK;
         }
     }
@@ -103,17 +103,17 @@ int eval_arguments(Arguments_t *args, Scanner_t *scanner){
     if(args->interface == NULL){
         RETURN_ERROR(ERR_CLI_ARG, "INTERFACE is mandatory parameter");
     }
-    scanner->interface = args->interface;
+    parser->interface = args->interface;
 
     if(args->hostname == NULL){
         RETURN_ERROR(ERR_CLI_ARG, "HOST is mandatory parameter");
     }else{
-        scanner->hostname = args->hostname; //is this valid? i think it is because it points to the main() parametr
+        parser->hostname = args->hostname; //is this valid? i think it is because it points to the main() parametr
     }
 
     if(args->timeout != NULL){
         char* end;
-        scanner->timeout = strtol(args->timeout, &end, DECIMAL_BASE);
+        parser->timeout = strtol(args->timeout, &end, DECIMAL_BASE);
     }
 
     if((args->u_ports == NULL) && (args->t_ports == NULL)){
@@ -121,20 +121,20 @@ int eval_arguments(Arguments_t *args, Scanner_t *scanner){
     }else{
         int err;
 
-        err = eval_ports(args->t_ports, &scanner->tcp_ports);
+        err = eval_ports(args->t_ports, &parser->tcp_ports);
         if(err != EXIT_OK){
             return err;
         }
-        err = eval_ports(args->u_ports, &scanner->udp_ports);
+        err = eval_ports(args->u_ports, &parser->udp_ports);
         if(err != EXIT_OK){
             return err;
         }
     }
 
-    if(args->t_ports != NULL) scanner->tcp_use = true;
-    if(args->u_ports != NULL) scanner->udp_use = true;
+    if(args->t_ports != NULL) parser->tcp_use = true;
+    if(args->u_ports != NULL) parser->udp_use = true;
 
-    scanner->mode = MODE_SCAN;
+    parser->mode = MODE_SCAN;
     return EXIT_OK;
 
 }

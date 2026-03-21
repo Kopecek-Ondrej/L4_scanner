@@ -1,6 +1,7 @@
 #ifndef __CLI_EVAL_H__
 #define __CLI_EVAL_H__
 #include <stdbool.h>
+#include <pcap.h>
 
 #define PORT_MAX 65535
 #define DECIMAL_BASE 10
@@ -51,14 +52,16 @@ typedef struct{
 	char *hostname;
 	int timeout;
 
+	pcap_t *pcap_handle;
+
 	Scanner_mode_t mode;
-}Scanner_t;
+}Parser_t;
 
 int parse_arguments(int argc, char* argv[], Arguments_t *args);
 
 void print_arguments(const Arguments_t *args);
 
-int eval_arguments(Arguments_t *args, Scanner_t *scanner);
+int eval_arguments(Arguments_t *args, Parser_t *parser);
 
 int eval_ports(char* s_ports, Ports_t *ports);
 

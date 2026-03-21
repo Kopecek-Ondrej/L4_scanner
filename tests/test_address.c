@@ -3,16 +3,16 @@
 #include "cli_eval.h"
 #include "error_code.h"
 #include "helper.h"
-#include "scanner.h"
+#include "parser.h"
 
 #include <arpa/inet.h>
 
 int test_resolve_hostname_user_set_ipv4(void) {
-    Scanner_t scanner = {0};
+    Parser_t parser = {0};
     Destination_addresses_t destination = {0};
-    scanner.hostname = "150.24.155.5";
+    parser.hostname = "150.24.155.5";
 
-    int rc = resolve_hostname(&scanner, &destination);
+    int rc = resolve_hostname(&parser, &destination);
 
     char ip[INET6_ADDRSTRLEN];
     ADDR_TO_STR((struct sockaddr*)&destination.items[0].addr, ip);
@@ -26,11 +26,11 @@ int test_resolve_hostname_user_set_ipv4(void) {
 }
 
 int test_resolve_hostname_user_set_ipv6(void) {
-    Scanner_t scanner = {0};
+    Parser_t parser = {0};
     Destination_addresses_t destination = {0};
-    scanner.hostname = "2001:0db8:85a3:0000:0000:8a2e:0370:7334";
+    parser.hostname = "2001:0db8:85a3:0000:0000:8a2e:0370:7334";
 
-    int rc = resolve_hostname(&scanner, &destination);
+    int rc = resolve_hostname(&parser, &destination);
 
     char ip[INET6_ADDRSTRLEN];
     ADDR_TO_STR((struct sockaddr*)&destination.items[0].addr, ip);
@@ -44,11 +44,11 @@ int test_resolve_hostname_user_set_ipv6(void) {
 }
 
 int test_resolve_hostname_user_invalid_ipv4(void) {
-    Scanner_t scanner = {0};
+    Parser_t parser = {0};
     Destination_addresses_t destination = {0};
-    scanner.hostname = "350.24.155.5";
+    parser.hostname = "350.24.155.5";
 
-    int rc = resolve_hostname(&scanner, &destination);
+    int rc = resolve_hostname(&parser, &destination);
 
     ASSERT_EQ_INT(ERR_RESOLVE_HOST, rc, "expected to fail, invalid ipv4");
 
@@ -58,11 +58,11 @@ int test_resolve_hostname_user_invalid_ipv4(void) {
 }
 
 int test_resolve_hostname_user_invalid_ipv6(void) {
-    Scanner_t scanner = {0};
+    Parser_t parser = {0};
     Destination_addresses_t destination = {0};
-    scanner.hostname = "2001:0db8:85a3dc:0000:0000:8a2e:0370:7334";
+    parser.hostname = "2001:0db8:85a3dc:0000:0000:8a2e:0370:7334";
 
-    int rc = resolve_hostname(&scanner, &destination);
+    int rc = resolve_hostname(&parser, &destination);
 
     ASSERT_EQ_INT(ERR_RESOLVE_HOST, rc, "expected to fail, invalid ipv6");
 

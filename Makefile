@@ -5,8 +5,8 @@ BUILD_DIR := build
 CPPFLAGS := -I$(SRC_DIR) -MMD -MP
 # Tests include headers from tests/ alongside src/
 TEST_CPPFLAGS := $(CPPFLAGS) -Itests -DTEST_BUILD
-#library for libnet
-LDLIBS := -lnet
+#library for libnet and libpcap
+LDLIBS := -lnet -lpcap
 # Enable HOME_TEST=1 to include home-only interface test in test_main
 ifeq ($(HOME_TEST),1)
 TEST_CPPFLAGS += -DHOME_TEST
