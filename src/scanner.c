@@ -480,28 +480,6 @@ long get_elapsed_ms(struct timespec start) {
     return (seconds * 1000) + (nanoseconds / 1000000);
 }
 
-int compare_ip(struct sockaddr* a, struct sockaddr* b) {
-    if(a->sa_family != b->sa_family)
-        return 0;
-    if(a->sa_family == AF_INET) {
-        return ((struct sockaddr_in*)a)->sin_addr.s_addr == ((struct sockaddr_in*)b)->sin_addr.s_addr;
-    } else {
-        return memcmp(&((struct sockaddr_in6*)a)->sin6_addr, &((struct sockaddr_in6*)b)->sin6_addr, 16) == 0;
-    }
-}
-
-// void *receiver_thread_func(void *arg) {
-//     Thread_args_t *args = (Thread_args_t *)arg;
-//     while (*(args->running)) {
-//         receive_packets(args->socks, args->table->packets, args->table->size);
-//     }
-//     return NULL;
-// }
-
-//__________________________________________
-
-// Předpokládám tvou definici Resolved_address_t a Destination_addresses_t...
-
 int setup_pcap_filter(pcap_t *handle, Destination_addresses_t *dest) {
     if (dest->count == 0) return 0;
 

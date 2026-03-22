@@ -28,8 +28,6 @@ int parse_arguments(int argc, char* argv[], Arguments_t *args) {
 		return EXIT_OK;
 	}
 
-
-
 	int opt = 0;
 	while ((opt = getopt(argc, argv, "i:u:t:w:")) != -1) {
 		args->arg_cnt++;
